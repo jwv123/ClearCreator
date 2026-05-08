@@ -18,9 +18,6 @@ import { AuthService } from '../../../core/services/auth.service';
         @if (error) {
           <nz-alert nzType="error" [nzMessage]="error" nzShowIcon></nz-alert>
         }
-        @if (success) {
-          <nz-alert nzType="success" nzMessage="Account created! Check your email to confirm." nzShowIcon></nz-alert>
-        }
         <form nz-form (ngSubmit)="onSubmit()" #registerForm="ngForm">
           <nz-form-item>
             <nz-form-label [nzSpan]="6">Name</nz-form-label>
@@ -62,7 +59,6 @@ export class RegisterComponent {
   displayName = '';
   loading = false;
   error = '';
-  success = false;
 
   private authService = inject(AuthService);
   private router = inject(Router);
@@ -72,7 +68,7 @@ export class RegisterComponent {
     this.loading = true;
     try {
       await this.authService.signUp(this.email, this.password, this.displayName || undefined);
-      this.success = true;
+      this.router.navigate(['/']);
     } catch (err: any) {
       this.error = err.message || 'Sign up failed';
     } finally {

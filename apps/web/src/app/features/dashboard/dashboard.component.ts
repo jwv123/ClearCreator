@@ -1,20 +1,23 @@
-import { Component, OnInit, inject } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
-import { DatePipe } from '@angular/common';
-import { NzCardModule } from 'ng-zorro-antd/card';
+import { Component, OnInit, inject, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzTypographyModule } from 'ng-zorro-antd/typography';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
-import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
-import { NzMenuModule } from 'ng-zorro-antd/menu';
+import { NzMessageService } from 'ng-zorro-antd/message';
 import { AuthService } from '../../core/services/auth.service';
+import { ProjectService, Project, Template } from '../../core/services/project.service';
+import { ProjectCardComponent } from './project-card/project-card.component';
+import { TemplateGalleryComponent } from './template-gallery/template-gallery.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [DatePipe, NzCardModule, NzButtonModule, NzGridModule, NzTypographyModule, NzEmptyModule, NzSpinModule, NzDropDownModule, NzMenuModule],
+  imports: [
+    NzButtonModule, NzGridModule, NzTypographyModule, NzEmptyModule, NzSpinModule,
+    ProjectCardComponent, TemplateGalleryComponent,
+  ],
   template: `
     <div class="dashboard-container">
       <header class="dashboard-header">
@@ -27,71 +30,164 @@ import { AuthService } from '../../core/services/auth.service';
         </div>
       </header>
 
-      <section class="dashboard-content">
+      <section class="dashboard-section">
         <h2 nz-typography>Recent Projects</h2>
-        @if (loading) {
+        @if (projectsLoading()) {
           <nz-spin></nz-spin>
-        } @else if (projects.length === 0) {
+        } @else if (projects().length === 0) {
           <nz-empty nzDescription="No projects yet. Create your first design!"></nz-empty>
         } @else {
-          <div nz-row [nzGutter]="16">
-            @for (project of projects; track project.id) {
+          <div nz-row [nzGutter]="[16, 16]">
+            @for (project of projects(); track project.id) {
               <div nz-col [nzSpan]="6">
-                <nz-card class="project-card" (click)="openProject(project.id)">
-                  <nz-card-meta [nzTitle]="project.name" [nzDescription]="project.updatedAt | date"></nz-card-meta>
-                </nz-card>
+                <app-project-card
+                  [project]="project"
+                  (clicked)="openProject($event)"
+                  (renamed)="renameProject($event)"
+                  (duplicated)="duplicateProject($event)"
+                  (deleted)="confirmDeleteProject($event)"
+                />
               </div>
             }
           </div>
         }
       </section>
 
-      <section class="dashboard-content">
-        <h2 nz-typography>Templates</h2>
-        <div nz-row [nzGutter]="16">
-          @for (template of templates; track template.id) {
-            <div nz-col [nzSpan]="6">
-              <nz-card class="template-card" (click)="createFromTemplate(template.id)">
-                <nz-card-meta [nzTitle]="template.name" [nzDescription]="template.category"></nz-card-meta>
-              </nz-card>
-            </div>
-          }
-        </div>
-      </section>
+      <app-template-gallery
+        [templates]="templates()"
+        [loading]="templatesLoading()"
+        (selected)="createFromTemplate($event)"
+      />
     </div>
   `,
   styles: [`
     .dashboard-container { padding: 24px; max-width: 1400px; margin: 0 auto; }
     .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
     .header-actions { display: flex; gap: 12px; }
-    .dashboard-content { margin-bottom: 40px; }
-    .project-card, .template-card { cursor: pointer; transition: transform 0.2s; }
-    .project-card:hover, .template-card:hover { transform: translateY(-2px); }
+    .dashboard-section { margin-bottom: 40px; }
   `],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DashboardComponent implements OnInit {
-  projects: any[] = [];
-  templates: any[] = [];
-  loading = true;
+  projects = signal<Project[]>([]);
+  templates = signal<Template[]>([]);
+  projectsLoading = signal(true);
+  templatesLoading = signal(true);
 
+  private projectService = inject(ProjectService);
   private authService = inject(AuthService);
   private router = inject(Router);
+  private message = inject(NzMessageService);
 
   ngOnInit() {
-    // TODO: Load projects and templates via Apollo Angular
-    this.loading = false;
+    this.loadProjects();
+    this.loadTemplates();
+  }
+
+  private loadProjects() {
+    this.projectsLoading.set(true);
+    this.projectService.getMyProjects().subscribe({
+      next: (projects) => {
+        this.projects.set(projects);
+        this.projectsLoading.set(false);
+      },
+      error: (err) => {
+        this.message.error('Failed to load projects');
+        this.projectsLoading.set(false);
+        console.error(err);
+      },
+    });
+  }
+
+  private loadTemplates() {
+    this.templatesLoading.set(true);
+    this.projectService.getFeaturedTemplates().subscribe({
+      next: (templates) => {
+        this.templates.set(templates);
+        this.templatesLoading.set(false);
+      },
+      error: (err) => {
+        this.message.error('Failed to load templates');
+        this.templatesLoading.set(false);
+        console.error(err);
+      },
+    });
   }
 
   createProject() {
-    this.router.navigate(['/editor/new']);
+    this.projectService.createProject().subscribe({
+      next: (project) => this.router.navigate(['/editor', project.id]),
+      error: (err) => {
+        this.message.error('Failed to create project');
+        console.error(err);
+      },
+    });
   }
 
   openProject(id: string) {
     this.router.navigate(['/editor', id]);
   }
 
-  createFromTemplate(templateId: string) {
-    this.router.navigate(['/editor/new']);
+  createFromTemplate(template: Template) {
+    this.projectService.createProject({
+      name: template.name,
+      canvasWidth: template.canvasWidth,
+      canvasHeight: template.canvasHeight,
+      backgroundColor: template.backgroundColor,
+    }).subscribe({
+      next: (project) => {
+        if (template.canvasJson && template.canvasJson !== '{}') {
+          this.projectService.updateProject({
+            id: project.id,
+            canvasJson: template.canvasJson,
+          }).subscribe();
+        }
+        this.router.navigate(['/editor', project.id]);
+      },
+      error: (err) => {
+        this.message.error('Failed to create project from template');
+        console.error(err);
+      },
+    });
+  }
+
+  renameProject(id: string) {
+    const project = this.projects().find((p) => p.id === id);
+    if (!project) return;
+    const newName = prompt('Rename project:', project.name);
+    if (newName && newName !== project.name) {
+      this.projectService.updateProject({ id, name: newName }).subscribe({
+        next: () => {
+          this.message.success('Project renamed');
+          this.loadProjects();
+        },
+        error: () => this.message.error('Failed to rename project'),
+      });
+    }
+  }
+
+  duplicateProject(id: string) {
+    this.projectService.duplicateProject(id).subscribe({
+      next: () => {
+        this.message.success('Project duplicated');
+        this.loadProjects();
+      },
+      error: () => this.message.error('Failed to duplicate project'),
+    });
+  }
+
+  confirmDeleteProject(id: string) {
+    const project = this.projects().find((p) => p.id === id);
+    if (!project) return;
+    if (confirm(`Delete "${project.name}"? This cannot be undone.`)) {
+      this.projectService.deleteProject(id).subscribe({
+        next: () => {
+          this.message.success('Project deleted');
+          this.loadProjects();
+        },
+        error: () => this.message.error('Failed to delete project'),
+      });
+    }
   }
 
   async signOut() {

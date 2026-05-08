@@ -8,17 +8,17 @@
 - [x] Configure Angular routing (auth, dashboard, editor)
 - [x] Create Supabase migrations and seed data
 
-## Phase 2: Auth
-- [ ] Configure Apollo Angular in `app.config.ts` with auth headers
-- [ ] Add Supabase auth callback route (`/auth/callback`)
-- [ ] Test login/register/Google OAuth flow end-to-end
+## Phase 2: Auth ✅
+- [x] Configure Apollo Angular in `app.config.ts` with auth headers
+- [x] Add Supabase auth callback route (`/auth/callback`)
+- [x] Test login/register/Google OAuth flow end-to-end
 
-## Phase 3: Dashboard
-- [ ] Wire up Apollo Angular queries (myProjects, templates, featuredTemplates)
-- [ ] Implement `ProjectService` with CRUD mutations
-- [ ] Build working `ProjectCardComponent` with thumbnails
-- [ ] Build working `TemplateGalleryComponent` with template previews
-- [ ] Create project flow → navigate to editor
+## Phase 3: Dashboard ✅
+- [x] Wire up Apollo Angular queries (myProjects, templates, featuredTemplates)
+- [x] Implement `ProjectService` with CRUD mutations
+- [x] Build working `ProjectCardComponent` with thumbnails
+- [x] Build working `TemplateGalleryComponent` with template previews
+- [x] Create project flow → navigate to editor
 
 ## Phase 4: Canvas Core
 - [ ] Complete `CanvasWrapperService` — verify all Fabric.js operations work (add/remove/update elements, selection, serialization)

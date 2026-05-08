@@ -52,5 +52,11 @@ System prompts in `ollama.service.ts` define the JSON schema contract between AI
 | Supabase migrations | `supabase/migrations/00001-00006_*.sql` |
 | Seed data (3 templates) | `supabase/seed.sql` |
 | Auth guard | `apps/web/src/app/core/guards/auth.guard.ts` |
+| Auth callback (OAuth) | `apps/web/src/app/features/auth/callback/callback.component.ts` |
+| Apollo config | `apps/web/src/app/app.config.ts` |
+| Project service (Apollo CRUD) | `apps/web/src/app/core/services/project.service.ts` |
+| Dashboard component | `apps/web/src/app/features/dashboard/dashboard.component.ts` |
+| Project card component | `apps/web/src/app/features/dashboard/project-card/project-card.component.ts` |
+| Template gallery component | `apps/web/src/app/features/dashboard/template-gallery/template-gallery.component.ts` |
 | Angular routes | `apps/web/src/app/app.routes.ts` |
 | Backend entry point | `apps/api/src/index.ts` |

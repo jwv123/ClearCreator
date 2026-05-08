@@ -1,11 +1,11 @@
 # Roadmap
 
-See [TODO.md](../../TODO.md) for the full phased checklist. Phase 1 (scaffolding) is complete.
+See [TODO.md](../../TODO.md) for the full phased checklist. Phases 1–3 are complete.
 
 Phase summary:
 1. ✅ Scaffolding — project structure, dependencies, migrations
-2. Auth — Supabase auth integration, callback routes
-3. Dashboard — Apollo Angular CRUD, project cards, template gallery
+2. ✅ Auth — Apollo Angular with auth headers, OAuth callback route, register flow
+3. ✅ Dashboard — ProjectService with Apollo CRUD, ProjectCardComponent, TemplateGalleryComponent, create-from-template flow
 4. Canvas core — Fabric.js wrapper, editor layout, properties/layers panels
 5. AI integration — streaming generation, apply-to-canvas, model selector
 6. Font system — Google Fonts API, font loading, font selector

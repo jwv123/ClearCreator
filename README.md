@@ -33,7 +33,7 @@ clearcreator/
       src/app/
         core/             # Services (auth, AI, Supabase), guards, models
         features/
-          auth/           # Login, register (Supabase auth)
+          auth/           # Login, register, OAuth callback (Supabase auth)
           dashboard/      # Project list, template gallery
           editor/         # Canvas, sidebar, panels, state services
         shared/           # Shared components, pipes
@@ -143,8 +143,8 @@ Frontend (Angular)  ←→  GraphQL API (Express)  ←→  Supabase (Postgres + 
 | Phase | Status | Description |
 |-------|--------|-------------|
 | 1 | ✅ | Scaffolding — project structure, dependencies, migrations |
-| 2 | 🔲 | Auth — Supabase auth, callback routes |
-| 3 | 🔲 | Dashboard — Apollo Angular CRUD, project cards, template gallery |
+| 2 | ✅ | Auth — Supabase auth, Apollo with auth headers, OAuth callback |
+| 3 | ✅ | Dashboard — ProjectService, project cards, template gallery |
 | 4 | 🔲 | Canvas core — Fabric.js wrapper, editor layout, properties/layers |
 | 5 | 🔲 | AI integration — streaming generation, apply-to-canvas, model selector |
 | 6 | 🔲 | Font system — Google Fonts, font selector |
