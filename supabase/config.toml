@@ -1,0 +1,29 @@
+# Supabase configuration
+# Update these values with your Supabase project credentials
+
+[api]
+port = 54321
+
+[db]
+port = 54322
+
+[studio]
+port = 54323
+
+[auth]
+site_url = "http://localhost:4200"
+additional_redirect_urls = ["http://localhost:4200/auth/callback"]
+jwt_expiry = 3600
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = false
+
+[auth.external.google]
+enabled = false
+# client_id = ""
+# secret = ""
+
+[storage]
+file_size_limit = "10MB"
