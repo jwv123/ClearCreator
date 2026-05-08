@@ -73,6 +73,10 @@ The API references these via TypeScript path aliases (`@clearcreator/shared-type
 - **No PDF export endpoint** — `pdfmake` is a dependency but no `/api/export/pdf` route exists.
 - **Environment tokens are placeholders** — `YOUR_SUPABASE_ANON_KEY`, etc. in `environment.ts`.
 
+## Implementation Roadmap
+
+See [TODO.md](./TODO.md) for the full phased checklist. Phase 1 (scaffolding) is complete.
+
 ## Key File Locations
 
 | What | Where |
