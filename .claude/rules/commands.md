@@ -4,6 +4,7 @@
 
 ```bash
 # Frontend (Angular v21) — dev server on localhost:4200
+# Proxies /api/* to localhost:3001 via proxy.conf.json
 cd apps/web && npm start
 
 # Frontend — production build to dist/web/
@@ -22,6 +23,6 @@ cd apps/api && npm start
 npm start
 
 # Database — apply migrations via Supabase dashboard or CLI
-```
+````
 
 No test runner is configured. All Angular schematics have `skipTests: true`.

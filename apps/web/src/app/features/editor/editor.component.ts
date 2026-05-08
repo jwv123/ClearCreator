@@ -1,168 +1,85 @@
-import { Component, OnInit, OnDestroy, inject, ViewChild, ElementRef, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ViewChild, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { Subject, takeUntil, debounceTime } from 'rxjs';
 import { NzLayoutModule } from 'ng-zorro-antd/layout';
-import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
-import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
-import { NzMenuModule } from 'ng-zorro-antd/menu';
-import { NzInputModule } from 'ng-zorro-antd/input';
-import { NzSpinModule } from 'ng-zorro-antd/spin';
-import { NzEmptyModule } from 'ng-zorro-antd/empty';
+import { NzTabsModule } from 'ng-zorro-antd/tabs';
+import { NzMessageService } from 'ng-zorro-antd/message';
 import { CanvasWrapperService } from './canvas/canvas-wrapper.service';
 import { CanvasState } from './state/canvas.state';
 import { SelectionState } from './state/selection.state';
 import { HistoryState } from './state/history.state';
 import { AiService } from '../../core/services/ai.service';
+import { TopbarComponent } from './components/topbar/topbar.component';
+import { SidebarComponent } from './components/sidebar/sidebar.component';
+import { CanvasAreaComponent } from './components/canvas-area/canvas-area.component';
+import { PropertiesPanelComponent } from './components/properties-panel/properties-panel.component';
+import { LayersPanelComponent } from './components/layers-panel/layers-panel.component';
 
 @Component({
   selector: 'app-editor',
   standalone: true,
   imports: [
-    CommonModule,
-    FormsModule,
-    NzLayoutModule,
-    NzButtonModule,
-    NzIconModule,
-    NzTooltipModule,
-    NzDropDownModule,
-    NzMenuModule,
-    NzInputModule,
-    NzSpinModule,
-    NzEmptyModule,
+    CommonModule, NzLayoutModule, NzTabsModule,
+    TopbarComponent, SidebarComponent, CanvasAreaComponent, PropertiesPanelComponent, LayersPanelComponent,
   ],
   template: `
     <nz-layout class="editor-layout">
-      <!-- Top Bar -->
-      <nz-header class="editor-topbar">
-        <div class="topbar-left">
-          <button nz-button nzType="text" (click)="goBack()">
-            <span nz-icon nzType="arrow-left"></span>
-          </button>
-          <input nz-input [(ngModel)]="projectName" class="project-name-input" />
-        </div>
-        <div class="topbar-center">
-          <div class="btn-group">
-            <button nz-button nzType="default" nzSize="small" (click)="undo()" [disabled]="!canUndo()">
-              <span nz-icon nzType="undo"></span>
-            </button>
-            <button nz-button nzType="default" nzSize="small" (click)="redo()" [disabled]="!canRedo()">
-              <span nz-icon nzType="redo"></span>
-            </button>
-          </div>
-          <span class="zoom-label">{{ zoomLevel() }}%</span>
-          <div class="btn-group">
-            <button nz-button nzType="default" nzSize="small" (click)="zoomOut()">
-              <span nz-icon nzType="minus"></span>
-            </button>
-            <button nz-button nzType="default" nzSize="small" (click)="zoomIn()">
-              <span nz-icon nzType="plus"></span>
-            </button>
-            <button nz-button nzType="default" nzSize="small" (click)="fitToScreen()">Fit</button>
-          </div>
-        </div>
-        <div class="topbar-right">
-          <button nz-button nzType="primary" (click)="showExportDialog()">Export</button>
-        </div>
-      </nz-header>
+      <app-topbar
+        [projectName]="projectName()"
+        [canUndo]="canUndo()"
+        [canRedo]="canRedo()"
+        [zoomLevel]="zoomLevel()"
+        (projectNameChange)="projectName.set($event)"
+        (goBack)="goBack()"
+        (undo)="undo()"
+        (redo)="redo()"
+        (zoomIn)="zoomIn()"
+        (zoomOut)="zoomOut()"
+        (fitToScreen)="fitToScreen()"
+        (export)="showExportDialog()"
+      />
 
       <nz-layout>
-        <!-- Sidebar -->
         <nz-sider class="editor-sidebar" nzWidth="280">
-          <div class="sidebar-content">
-            <h4>Tools</h4>
-            <div class="tool-grid">
-              <button nz-button nzType="default" class="tool-btn" (click)="addText()">
-                <span nz-icon nzType="font-size"></span>
-                <span>Text</span>
-              </button>
-              <button nz-button nzType="default" class="tool-btn" (click)="addRect()">
-                <span nz-icon nzType="border"></span>
-                <span>Rectangle</span>
-              </button>
-              <button nz-button nzType="default" class="tool-btn" (click)="addCircle()">
-                <span nz-icon nzType="circle"></span>
-                <span>Circle</span>
-              </button>
-              <button nz-button nzType="default" class="tool-btn" (click)="addImage()">
-                <span nz-icon nzType="picture"></span>
-                <span>Image</span>
-              </button>
-            </div>
-
-            <h4>AI Generate</h4>
-            <nz-input-group nzSearch [nzAddOnAfter]="searchBtn">
-              <input nz-input placeholder="Describe your design..." [(ngModel)]="aiPrompt" (keydown.enter)="generateWithAI()" />
-            </nz-input-group>
-            <ng-template #searchBtn>
-              <button nz-button nzType="primary" nzSize="small" (click)="generateWithAI()" [nzLoading]="isGenerating()">
-                Generate
-              </button>
-            </ng-template>
-
-            @if (isGenerating()) {
-              <nz-spin nzSimple class="ai-spinner"></nz-spin>
-            }
-            @if (aiStreamingText()) {
-              <div class="ai-streaming">{{ aiStreamingText() }}</div>
-            }
-          </div>
+          <app-sidebar
+            [isGenerating]="isGenerating()"
+            [streamingText]="aiStreamingText()"
+            (addText)="addText()"
+            (addRect)="addRect()"
+            (addCircle)="addCircle()"
+            (addImage)="addImage()"
+            (generateAI)="generateWithAI($event)"
+          />
         </nz-sider>
 
-        <!-- Canvas Area -->
         <nz-content class="editor-canvas-area">
-          <div class="canvas-container" #canvasContainer>
-            <canvas #canvasEl></canvas>
-          </div>
+          <app-canvas-area />
         </nz-content>
 
-        <!-- Properties Panel -->
-        <nz-sider class="editor-properties" nzWidth="260" nzPlacement="right">
-          <div class="properties-content">
-            @if (selectedType() === 'none') {
-              <nz-empty nzDescription="Select an element to edit"></nz-empty>
-            } @else if (selectedType() === 'textbox') {
-              <h4>Text Properties</h4>
-              <!-- Text properties will be rendered here -->
-            } @else if (selectedType() === 'image') {
-              <h4>Image Properties</h4>
-              <!-- Image properties will be rendered here -->
-            } @else {
-              <h4>Shape Properties</h4>
-              <!-- Shape properties will be rendered here -->
-            }
-          </div>
+        <nz-sider class="editor-right-panel" nzWidth="280" nzPlacement="right">
+          <nz-tabs [(nzSelectedIndex)]="rightPanelIndex" nzSize="small" [nzAnimated]="false">
+            <nz-tab nzTitle="Properties">
+              <app-properties-panel />
+            </nz-tab>
+            <nz-tab nzTitle="Layers">
+              <app-layers-panel />
+            </nz-tab>
+          </nz-tabs>
         </nz-sider>
       </nz-layout>
     </nz-layout>
   `,
   styles: [`
     .editor-layout { height: 100vh; }
-    .editor-topbar { display: flex; align-items: center; justify-content: space-between; padding: 0 16px; background: #fff; border-bottom: 1px solid #e8e8e8; }
-    .topbar-left, .topbar-right { display: flex; align-items: center; gap: 8px; }
-    .topbar-center { display: flex; align-items: center; gap: 8px; }
-    .project-name-input { width: 200px; border: none; font-size: 16px; font-weight: 500; background: transparent; }
-    .project-name-input:focus { outline: none; }
-    .zoom-label { font-size: 12px; color: #666; min-width: 40px; text-align: center; }
-    .btn-group { display: inline-flex; gap: 2px; }
     .editor-sidebar { background: #fafafa; border-right: 1px solid #e8e8e8; overflow-y: auto; }
-    .sidebar-content { padding: 16px; }
-    .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
-    .tool-btn { display: flex; flex-direction: column; align-items: center; height: auto; padding: 12px 8px; }
-    .ai-spinner { margin: 16px auto; display: block; }
-    .ai-streaming { margin-top: 12px; padding: 8px; background: #f5f5f5; border-radius: 4px; font-size: 12px; max-height: 200px; overflow-y: auto; }
-    .editor-canvas-area { display: flex; align-items: center; justify-content: center; background: #e8e8e8; overflow: hidden; }
-    .canvas-container { background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-    .editor-properties { background: #fafafa; border-left: 1px solid #e8e8e8; overflow-y: auto; }
-    .properties-content { padding: 16px; }
+    .editor-canvas-area { flex: 1; display: flex; overflow: hidden; }
+    .editor-right-panel { background: #fafafa; border-left: 1px solid #e8e8e8; overflow-y: auto; }
+    .editor-right-panel ::ng-deep .ant-tabs { height: 100%; }
+    .editor-right-panel ::ng-deep .ant-tabs-content { height: calc(100% - 46px); overflow-y: auto; }
   `],
 })
 export class EditorComponent implements OnInit, OnDestroy {
-  @ViewChild('canvasEl') canvasEl!: ElementRef<HTMLCanvasElement>;
-  @ViewChild('canvasContainer') canvasContainer!: ElementRef<HTMLDivElement>;
-
   private canvasWrapper = inject(CanvasWrapperService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -170,54 +87,86 @@ export class EditorComponent implements OnInit, OnDestroy {
   private selectionState = inject(SelectionState);
   private historyState = inject(HistoryState);
   private aiService = inject(AiService);
+  private message = inject(NzMessageService);
+  private destroy$ = new Subject<void>();
 
   projectName = signal('Untitled Project');
-  aiPrompt = '';
+  zoomLevel = signal(100);
+  rightPanelIndex = 0;
   isGenerating = this.aiService.isGenerating;
   aiStreamingText = this.aiService.streamingText;
-  zoomLevel = signal(100);
-  selectedType = this.selectionState.selectedType;
   canUndo = this.historyState.canUndo;
   canRedo = this.historyState.canRedo;
 
   private projectId: string | null = null;
 
-  ngOnInit() {
+  ngOnInit(): void {
     this.projectId = this.route.snapshot.paramMap.get('id');
     // TODO: Load project from GraphQL if projectId !== 'new'
   }
 
-  ngAfterViewInit() {
-    if (this.canvasEl && this.canvasContainer) {
-      this.canvasWrapper.init(
-        this.canvasEl.nativeElement,
-        this.canvasState.canvasWidth(),
-        this.canvasState.canvasHeight()
-      );
-    }
+  ngAfterViewInit(): void {
+    // Wire up history recording — push snapshot on canvas changes
+    this.canvasWrapper.onObjectAdded$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      this.historyState.push({
+        json: this.canvasWrapper.snapshot(),
+        timestamp: Date.now(),
+      });
+    });
+
+    this.canvasWrapper.onObjectRemoved$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      this.historyState.push({
+        json: this.canvasWrapper.snapshot(),
+        timestamp: Date.now(),
+      });
+    });
+
+    this.canvasWrapper.onObjectModified$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      this.historyState.push({
+        json: this.canvasWrapper.snapshot(),
+        timestamp: Date.now(),
+      });
+    });
+
+    // Debounce text changes to avoid pushing on every keystroke
+    this.canvasWrapper.onTextChanged$.pipe(
+      debounceTime(300),
+      takeUntil(this.destroy$),
+    ).subscribe(() => {
+      this.historyState.push({
+        json: this.canvasWrapper.snapshot(),
+        timestamp: Date.now(),
+      });
+    });
+
+    // Sync zoom level from canvas wrapper
+    this.canvasWrapper.onObjectModified$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      this.zoomLevel.set(Math.round(this.canvasWrapper.getZoom() * 100));
+    });
   }
 
-  ngOnDestroy() {
-    this.canvasWrapper.dispose();
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
-  goBack() {
+  goBack(): void {
     this.router.navigate(['/']);
   }
 
-  addText() {
-    this.canvasWrapper.addTextElement('Double-click to edit');
+  addText(): void {
+    this.canvasWrapper.addTextElement();
   }
 
-  addRect() {
+  addRect(): void {
     this.canvasWrapper.addRectElement();
   }
 
-  addCircle() {
+  addCircle(): void {
     this.canvasWrapper.addCircleElement();
   }
 
-  addImage() {
+  addImage(): void {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
@@ -228,12 +177,12 @@ export class EditorComponent implements OnInit, OnDestroy {
     input.click();
   }
 
-  generateWithAI() {
-    if (!this.aiPrompt.trim()) return;
+  generateWithAI(prompt: string): void {
+    if (!prompt.trim()) return;
     this.aiService.generateDesignStream(
-      this.aiPrompt,
+      prompt,
       this.canvasState.canvasWidth(),
-      this.canvasState.canvasHeight()
+      this.canvasState.canvasHeight(),
     ).subscribe({
       next: (data: string) => {
         if (typeof data === 'string') {
@@ -241,41 +190,49 @@ export class EditorComponent implements OnInit, OnDestroy {
             const parsed = JSON.parse(data);
             if (parsed.elements) {
               this.canvasWrapper.loadFromJSON(parsed);
-              this.aiPrompt = '';
             }
-          } catch {}
+          } catch {
+            // Streaming chunk, not yet valid JSON
+          }
         }
       },
-      error: (err: unknown) => console.error('AI generation error:', err),
+      error: (err: unknown) => {
+        this.message.error('AI generation failed');
+        console.error('AI generation error:', err);
+      },
     });
   }
 
-  showExportDialog() {
-    // TODO: Show export dialog component
-    const dataUrl = this.canvasWrapper.toDataURL({ format: 'png', multiplier: 2 });
-    const link = document.createElement('a');
-    link.download = `${this.projectName()}.png`;
-    link.href = dataUrl;
-    link.click();
+  undo(): void {
+    this.historyState.undo();
   }
 
-  undo() { this.historyState.undo(); }
-  redo() { this.historyState.redo(); }
+  redo(): void {
+    this.historyState.redo();
+  }
 
-  zoomIn() {
+  zoomIn(): void {
     const current = this.zoomLevel();
     this.zoomLevel.set(Math.min(current + 10, 300));
     this.canvasWrapper.setZoom(this.zoomLevel() / 100);
   }
 
-  zoomOut() {
+  zoomOut(): void {
     const current = this.zoomLevel();
     this.zoomLevel.set(Math.max(current - 10, 25));
     this.canvasWrapper.setZoom(this.zoomLevel() / 100);
   }
 
-  fitToScreen() {
+  fitToScreen(): void {
     this.canvasWrapper.fitToScreen();
     this.zoomLevel.set(Math.round(this.canvasWrapper.getZoom() * 100));
+  }
+
+  showExportDialog(): void {
+    const dataUrl = this.canvasWrapper.toDataURL({ format: 'png', multiplier: 2 });
+    const link = document.createElement('a');
+    link.download = `${this.projectName()}.png`;
+    link.href = dataUrl;
+    link.click();
   }
 }

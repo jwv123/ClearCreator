@@ -15,5 +15,5 @@ Context is split into focused rule files under `.claude/rules/`:
 - **[commands.md](./.claude/rules/commands.md)** — Dev server, build, and run commands
 - **[architecture.md](./.claude/rules/architecture.md)** — Canvas architecture, backend AI proxy, Supabase roles, shared types, key file locations
 - **[style-and-patterns.md](./.claude/rules/style-and-patterns.md)** — Angular patterns, Fabric.js rules, backend conventions, database conventions
-- **[known-gaps.md](./.claude/rules/known-gaps.md)** — Missing proxy config, unconfigured Apollo, no save/load, permissive auth, etc.
+- **[known-gaps.md](./.claude/rules/known-gaps.md)** — No save/load, permissive auth, no keyboard shortcuts, placeholder env tokens, etc.
 - **[roadmap.md](./.claude/rules/roadmap.md)** — Phase summary and link to full TODO.md

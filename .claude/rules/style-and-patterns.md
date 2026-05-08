@@ -12,14 +12,23 @@
 - NG-ZORRO for UI components (buttons, cards, forms, layouts, modals, etc.)
 - Inline templates and styles for small components; external files for larger ones
 - NG-ZORRO component module names use PascalCase: `NzButtonModule`, `NzCardModule`, `NzTooltipModule` (not `NzToolTipModule`)
+- NG-ZORRO v21 tabs use `<nz-tabs>` and `<nz-tab>` (not `nz-tabset`)
 - `nz-button-group` is NOT available as a standalone directive in v21 — use a `<div class="btn-group">` with CSS flexbox instead
+- Editor sub-components live in `features/editor/components/` — each in its own directory with a single `.ts` file
+- EditorComponent is an orchestrator that composes TopbarComponent, SidebarComponent, CanvasAreaComponent, PropertiesPanelComponent, and LayersPanelComponent
 
 ## Fabric.js (Canvas)
 
 - **Never import `fabric` directly in components** — always go through `CanvasWrapperService`
+- Only `CanvasAreaComponent` holds the `<canvas>` DOM ref; all other components use the service
 - Element IDs use `crypto.randomUUID()` assigned as `(obj as any).id`
 - Canvas events are bridged to both signals and RxJS Subjects in `CanvasWrapperService`
 - Use `CanvasWrapperService.snapshot()` / `restoreSnapshot()` for undo/redo, not command pattern
+- History is wired in EditorComponent: `onObjectAdded$`, `onObjectModified$`, `onObjectRemoved$` push snapshots; `onTextChanged$` is debounced at 300ms
+- `CanvasWrapperService.getElementProperties(id)` returns a typed `ElementProperties` object for the properties panel
+- Layer ordering uses `bringForward()`, `sendBackward()`, `bringToFront()`, `sendToBack()`
+- Visibility toggles: `toggleVisibility()`, `isElementVisible()`
+- Lock/unlock: `lockElement()`, `unlockElement()`, `isElementLocked()` — sets `selectable` and `evented` on the Fabric object
 - Export types use `ImageFormat` from `fabric` (`import { type ImageFormat } from 'fabric'`)
 
 ## Backend (Node.js)

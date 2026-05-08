@@ -15,13 +15,19 @@ No build step for `libs/` — the API references them via TypeScript path aliase
 
 ## Three-Layer Canvas Architecture
 
-**Rule: Only `CanvasWrapperService` touches Fabric.js.** No component except `EditorComponent` (which holds the `<canvas>` DOM ref) should import from `fabric`. All canvas interactions go through the service.
+**Rule: Only `CanvasWrapperService` touches Fabric.js.** No component except `CanvasAreaComponent` (which holds the `<canvas>` DOM ref) should import from `fabric`. All canvas interactions go through the service.
 
-1. **CanvasWrapperService** (`features/editor/canvas/`) — owns the Fabric.js `Canvas` instance. Bridges imperative canvas ops to Angular reactivity via signals (`selectedObjectIds`, `selectedObjectType`) and RxJS Subjects (`onObjectModified$`, `onTextChanged$`, etc.). Every element gets `crypto.randomUUID()` as its `id`.
+1. **CanvasWrapperService** (`features/editor/canvas/`) — owns the Fabric.js `Canvas` instance. Bridges imperative canvas ops to Angular reactivity via signals (`selectedObjectIds`, `selectedObjectType`) and RxJS Subjects (`onObjectModified$`, `onTextChanged$`, `onObjectsReordered$`, etc.). Every element gets `crypto.randomUUID()` as its `id`. Provides layer ordering (bringForward/sendBackward), visibility toggles, lock/unlock, duplicate, group/ungroup, and `getElementProperties()`.
 
-2. **State services** (`features/editor/state/`) — lightweight signal bags. `SelectionState` derives from CanvasWrapper. `HistoryState` does undo/redo via `snapshot()/restoreSnapshot()` (50-entry stack). `CanvasState` holds project metadata. `AiState` holds generation state.
+2. **State services** (`features/editor/state/`) — lightweight signal bags. `SelectionState` derives from CanvasWrapper. `HistoryState` does undo/redo via `snapshot()/restoreSnapshot()` (50-entry stack, wired to canvas events via debounced subscriptions in EditorComponent). `CanvasState` holds project metadata. `AiState` holds generation state.
 
-3. **Infrastructure services** (`core/services/`) — `AuthService` wraps Supabase auth (BehaviorSubject + signals). `AiService` uses raw `fetch` for SSE streaming, `HttpClient` for non-streaming. `SupabaseService` is a singleton client wrapper.
+3. **Editor sub-components** (`features/editor/components/`) — `TopbarComponent`, `SidebarComponent`, `CanvasAreaComponent`, `PropertiesPanelComponent`, `LayersPanelComponent`. EditorComponent orchestrates them. PropertiesPanel shows context-sensitive controls (text/shape/image/canvas). LayersPanel lists objects in z-order with visibility/lock toggles.
+
+4. **Infrastructure services** (`core/services/`) — `AuthService` wraps Supabase auth (BehaviorSubject + signals). `AiService` uses raw `fetch` for SSE streaming, `HttpClient` for non-streaming. `SupabaseService` is a singleton client wrapper.
+
+## Dev Proxy
+
+Angular dev server proxies `/api/*` to `localhost:3001` via `apps/web/proxy.conf.json`. Configured in `angular.json` serve options. This is only used in development — production would use a reverse proxy or same-origin deployment.
 
 ## Backend AI Proxy
 
@@ -44,6 +50,12 @@ System prompts in `ollama.service.ts` define the JSON schema contract between AI
 | What | Where |
 |------|-------|
 | Canvas wrapper (Fabric.js bridge) | `apps/web/src/app/features/editor/canvas/canvas-wrapper.service.ts` |
+| Editor orchestrator | `apps/web/src/app/features/editor/editor.component.ts` |
+| Topbar component | `apps/web/src/app/features/editor/components/topbar/topbar.component.ts` |
+| Sidebar component | `apps/web/src/app/features/editor/components/sidebar/sidebar.component.ts` |
+| Canvas area component | `apps/web/src/app/features/editor/components/canvas-area/canvas-area.component.ts` |
+| Properties panel | `apps/web/src/app/features/editor/components/properties-panel/properties-panel.component.ts` |
+| Layers panel | `apps/web/src/app/features/editor/components/layers-panel/layers-panel.component.ts` |
 | AI streaming service | `apps/web/src/app/core/services/ai.service.ts` |
 | Ollama proxy + system prompts | `apps/api/src/services/ollama.service.ts` |
 | GraphQL schema + resolvers | `apps/api/src/graphql/schema/index.ts`, `apps/api/src/graphql/resolvers/index.ts` |

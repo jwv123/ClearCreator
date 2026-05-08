@@ -20,14 +20,14 @@
 - [x] Build working `TemplateGalleryComponent` with template previews
 - [x] Create project flow → navigate to editor
 
-## Phase 4: Canvas Core
-- [ ] Complete `CanvasWrapperService` — verify all Fabric.js operations work (add/remove/update elements, selection, serialization)
-- [ ] Build `CanvasComponent` with ResizeObserver for responsive canvas sizing
-- [ ] Implement `EditorComponent` layout (topbar, sidebar, canvas, properties panel)
-- [ ] Build `SidebarComponent` with text, shape, and image tools
-- [ ] Build `PropertiesPanelComponent` — dynamic panel based on selection type
-- [ ] Build `LayersPanelComponent` — z-order list with drag reorder, visibility, lock toggles
-- [ ] Add dev proxy config (`proxy.conf.json`) so `/api/*` routes to `localhost:3001`
+## Phase 4: Canvas Core ✅
+- [x] Complete `CanvasWrapperService` — verify all Fabric.js operations work (add/remove/update elements, selection, serialization)
+- [x] Build `CanvasComponent` with ResizeObserver for responsive canvas sizing
+- [x] Implement `EditorComponent` layout (topbar, sidebar, canvas, properties panel)
+- [x] Build `SidebarComponent` with text, shape, and image tools
+- [x] Build `PropertiesPanelComponent` — dynamic panel based on selection type
+- [x] Build `LayersPanelComponent` — z-order list with drag reorder, visibility, lock toggles
+- [x] Add dev proxy config (`proxy.conf.json`) so `/api/*` routes to `localhost:3001`
 
 ## Phase 5: AI Integration
 - [ ] Test Ollama Cloud API connectivity end-to-end
@@ -49,7 +49,7 @@
 - [ ] Wire `FabricImage.fromURL()` for adding uploaded images to canvas
 
 ## Phase 8: Undo/Redo + Keyboard Shortcuts
-- [ ] Implement undo/redo in `HistoryState` — subscribe to `CanvasWrapperService.onObjectModified$`
+- [x] Implement undo/redo in `HistoryState` — wired to canvas events via EditorComponent subscriptions (object:added, object:modified, object:removed, debounced text:changed)
 - [ ] Add keyboard shortcuts: Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z, Delete, Ctrl+C/V, Ctrl+G/Shift+G, Ctrl+A, arrow keys
 
 ## Phase 9: Export

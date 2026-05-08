@@ -13,6 +13,36 @@ export interface SelectionChangedEvent {
   selectedType: string;
 }
 
+export interface ElementProperties {
+  id: string;
+  type: string;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  scaleX: number;
+  scaleY: number;
+  angle: number;
+  opacity: number;
+  visible: boolean;
+  locked: boolean;
+  fill: string | undefined;
+  stroke: string | undefined;
+  strokeWidth: number;
+  // Text-specific
+  text?: string;
+  fontFamily?: string;
+  fontSize?: number;
+  fontWeight?: string;
+  fontStyle?: string;
+  textAlign?: string;
+  lineHeight?: number;
+  // Shape-specific
+  rx?: number;
+  ry?: number;
+  radius?: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CanvasWrapperService {
   private canvas!: Canvas;
@@ -28,6 +58,7 @@ export class CanvasWrapperService {
   onObjectRemoved$ = new Subject<{ id: string }>();
   onSelectionChanged$ = new Subject<SelectionChangedEvent>();
   onTextChanged$ = new Subject<{ id: string; text: string }>();
+  onObjectsReordered$ = new Subject<void>();
 
   init(canvasEl: HTMLCanvasElement, width: number, height: number): Canvas {
     if (this.initialized) {
@@ -192,6 +223,7 @@ export class CanvasWrapperService {
     const obj = this.getElementById(id);
     if (obj) {
       obj.set(changes);
+      obj.setCoords();
       this.canvas.renderAll();
     }
   }
@@ -213,6 +245,196 @@ export class CanvasWrapperService {
   deselectAll(): void {
     this.canvas.discardActiveObject();
     this.canvas.renderAll();
+  }
+
+  selectById(id: string): void {
+    const obj = this.getElementById(id);
+    if (obj) {
+      this.canvas.setActiveObject(obj);
+      this.canvas.renderAll();
+    }
+  }
+
+  // --- Element Properties ---
+
+  getObjects(): FabricObject[] {
+    return this.canvas.getObjects();
+  }
+
+  getElementProperties(id: string): ElementProperties | null {
+    const obj = this.getElementById(id);
+    if (!obj) return null;
+
+    const props: ElementProperties = {
+      id,
+      type: obj.type || 'unknown',
+      left: obj.left ?? 0,
+      top: obj.top ?? 0,
+      width: obj.width ?? 0,
+      height: obj.height ?? 0,
+      scaleX: obj.scaleX ?? 1,
+      scaleY: obj.scaleY ?? 1,
+      angle: obj.angle ?? 0,
+      opacity: obj.opacity ?? 1,
+      visible: obj.visible !== false,
+      locked: (obj as any).selectable === false,
+      fill: typeof obj.fill === 'string' ? obj.fill : undefined,
+      stroke: typeof obj.stroke === 'string' ? obj.stroke : undefined,
+      strokeWidth: obj.strokeWidth ?? 0,
+    };
+
+    if (obj instanceof Textbox) {
+      props.text = obj.text;
+      props.fontFamily = obj.fontFamily;
+      props.fontSize = obj.fontSize;
+      props.fontWeight = String(obj.fontWeight ?? 'normal');
+      props.fontStyle = obj.fontStyle ?? 'normal';
+      props.textAlign = obj.textAlign ?? 'left';
+      props.lineHeight = obj.lineHeight ?? 1.3;
+    }
+
+    if (obj instanceof Rect) {
+      props.rx = obj.rx ?? 0;
+      props.ry = obj.ry ?? 0;
+    }
+
+    if (obj instanceof Circle) {
+      props.radius = obj.radius ?? 0;
+    }
+
+    return props;
+  }
+
+  // --- Layer Ordering ---
+
+  bringForward(id: string): void {
+    const obj = this.getElementById(id);
+    if (obj) {
+      this.canvas.bringObjectForward(obj);
+      this.canvas.renderAll();
+      this.onObjectsReordered$.next();
+    }
+  }
+
+  sendBackward(id: string): void {
+    const obj = this.getElementById(id);
+    if (obj) {
+      this.canvas.sendObjectBackwards(obj);
+      this.canvas.renderAll();
+      this.onObjectsReordered$.next();
+    }
+  }
+
+  bringToFront(id: string): void {
+    const obj = this.getElementById(id);
+    if (obj) {
+      this.canvas.bringObjectToFront(obj);
+      this.canvas.renderAll();
+      this.onObjectsReordered$.next();
+    }
+  }
+
+  sendToBack(id: string): void {
+    const obj = this.getElementById(id);
+    if (obj) {
+      this.canvas.sendObjectToBack(obj);
+      this.canvas.renderAll();
+      this.onObjectsReordered$.next();
+    }
+  }
+
+  // --- Visibility & Locking ---
+
+  toggleVisibility(id: string): void {
+    const obj = this.getElementById(id);
+    if (obj) {
+      obj.set('visible', !obj.visible);
+      this.canvas.renderAll();
+    }
+  }
+
+  isElementVisible(id: string): boolean {
+    const obj = this.getElementById(id);
+    return obj ? obj.visible !== false : true;
+  }
+
+  lockElement(id: string): void {
+    const obj = this.getElementById(id);
+    if (obj) {
+      obj.set({ selectable: false, evented: false } as any);
+      this.canvas.renderAll();
+    }
+  }
+
+  unlockElement(id: string): void {
+    const obj = this.getElementById(id);
+    if (obj) {
+      obj.set({ selectable: true, evented: true } as any);
+      this.canvas.renderAll();
+    }
+  }
+
+  isElementLocked(id: string): boolean {
+    const obj = this.getElementById(id);
+    return obj ? (obj as any).selectable === false : false;
+  }
+
+  // --- Duplicate ---
+
+  duplicateElement(id: string): void {
+    const obj = this.getElementById(id);
+    if (!obj) return;
+
+    obj.clone().then((cloned: FabricObject) => {
+      (cloned as any).id = crypto.randomUUID();
+      cloned.set({
+        left: (obj.left ?? 0) + 20,
+        top: (obj.top ?? 0) + 20,
+      });
+      this.canvas.add(cloned);
+      this.canvas.setActiveObject(cloned);
+      this.canvas.renderAll();
+    });
+  }
+
+  // --- Group / Ungroup ---
+
+  groupSelected(): void {
+    const activeObject = this.canvas.getActiveObject();
+    if (!activeObject) return;
+
+    // Check if it's already an ActiveSelection with multiple objects
+    if (activeObject.type === 'activeselection') {
+      const group = (activeObject as any).toGroup();
+      (group as any).id = crypto.randomUUID();
+      this.canvas.renderAll();
+      this.canvas.setActiveObject(group);
+    }
+  }
+
+  ungroupSelected(): void {
+    const activeObject = this.canvas.getActiveObject();
+    if (!activeObject || activeObject.type !== 'group') return;
+
+    const items = (activeObject as any).removeAll();
+    this.canvas.remove(activeObject);
+
+    for (const item of items) {
+      (item as any).id = (item as any).id || crypto.randomUUID();
+      this.canvas.add(item);
+    }
+    this.canvas.renderAll();
+  }
+
+  // --- Canvas Background ---
+
+  setBackgroundColor(color: string): void {
+    this.canvas.set('backgroundColor', color);
+    this.canvas.renderAll();
+  }
+
+  getBackgroundColor(): string {
+    return (this.canvas as any).backgroundColor as string || '#ffffff';
   }
 
   // --- Serialization ---
@@ -270,9 +492,26 @@ export class CanvasWrapperService {
     return this.canvas.getZoom();
   }
 
-  fitToScreen(): void {
-    // Reset zoom to 1 and center
-    this.canvas.setZoom(1);
+  fitToScreen(containerWidth?: number, containerHeight?: number): void {
+    if (!containerWidth || !containerHeight) {
+      this.canvas.setZoom(1);
+      this.canvas.renderAll();
+      return;
+    }
+
+    const canvasWidth = this.canvas.getWidth();
+    const canvasHeight = this.canvas.getHeight();
+    const padding = 40;
+    const availWidth = containerWidth - padding * 2;
+    const availHeight = containerHeight - padding * 2;
+
+    const scale = Math.min(availWidth / canvasWidth, availHeight / canvasHeight, 1);
+    this.canvas.setZoom(scale);
+
+    // Center the canvas viewport
+    const vpt = this.canvas.viewportTransform!;
+    vpt[4] = (containerWidth - canvasWidth * scale) / 2;
+    vpt[5] = (containerHeight - canvasHeight * scale) / 2;
     this.canvas.renderAll();
   }
 
@@ -281,6 +520,14 @@ export class CanvasWrapperService {
   setDimensions(width: number, height: number): void {
     this.canvas.setDimensions({ width, height });
     this.canvas.renderAll();
+  }
+
+  getCanvasWidth(): number {
+    return this.canvas.getWidth();
+  }
+
+  getCanvasHeight(): number {
+    return this.canvas.getHeight();
   }
 
   getCanvas(): Canvas {
