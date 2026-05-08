@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, ViewChild, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ViewChild, signal, effect } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { Subject, takeUntil, debounceTime } from 'rxjs';
@@ -9,19 +9,21 @@ import { CanvasWrapperService } from './canvas/canvas-wrapper.service';
 import { CanvasState } from './state/canvas.state';
 import { SelectionState } from './state/selection.state';
 import { HistoryState } from './state/history.state';
-import { AiService } from '../../core/services/ai.service';
+import { AiState } from './state/ai.state';
 import { TopbarComponent } from './components/topbar/topbar.component';
 import { SidebarComponent } from './components/sidebar/sidebar.component';
 import { CanvasAreaComponent } from './components/canvas-area/canvas-area.component';
 import { PropertiesPanelComponent } from './components/properties-panel/properties-panel.component';
 import { LayersPanelComponent } from './components/layers-panel/layers-panel.component';
+import { AiPanelComponent } from './components/ai-panel/ai-panel.component';
 
 @Component({
   selector: 'app-editor',
   standalone: true,
   imports: [
     CommonModule, NzLayoutModule, NzTabsModule,
-    TopbarComponent, SidebarComponent, CanvasAreaComponent, PropertiesPanelComponent, LayersPanelComponent,
+    TopbarComponent, SidebarComponent, CanvasAreaComponent,
+    PropertiesPanelComponent, LayersPanelComponent, AiPanelComponent,
   ],
   template: `
     <nz-layout class="editor-layout">
@@ -43,13 +45,10 @@ import { LayersPanelComponent } from './components/layers-panel/layers-panel.com
       <nz-layout>
         <nz-sider class="editor-sidebar" nzWidth="280">
           <app-sidebar
-            [isGenerating]="isGenerating()"
-            [streamingText]="aiStreamingText()"
             (addText)="addText()"
             (addRect)="addRect()"
             (addCircle)="addCircle()"
             (addImage)="addImage()"
-            (generateAI)="generateWithAI($event)"
           />
         </nz-sider>
 
@@ -64,6 +63,9 @@ import { LayersPanelComponent } from './components/layers-panel/layers-panel.com
             </nz-tab>
             <nz-tab nzTitle="Layers">
               <app-layers-panel />
+            </nz-tab>
+            <nz-tab nzTitle="AI">
+              <app-ai-panel />
             </nz-tab>
           </nz-tabs>
         </nz-sider>
@@ -86,27 +88,31 @@ export class EditorComponent implements OnInit, OnDestroy {
   private canvasState = inject(CanvasState);
   private selectionState = inject(SelectionState);
   private historyState = inject(HistoryState);
-  private aiService = inject(AiService);
+  private aiState = inject(AiState);
   private message = inject(NzMessageService);
   private destroy$ = new Subject<void>();
 
   projectName = signal('Untitled Project');
   zoomLevel = signal(100);
   rightPanelIndex = 0;
-  isGenerating = this.aiService.isGenerating;
-  aiStreamingText = this.aiService.streamingText;
   canUndo = this.historyState.canUndo;
   canRedo = this.historyState.canRedo;
 
   private projectId: string | null = null;
 
+  constructor() {
+    effect(() => {
+      if (this.aiState.isGenerating()) {
+        this.rightPanelIndex = 2;
+      }
+    });
+  }
+
   ngOnInit(): void {
     this.projectId = this.route.snapshot.paramMap.get('id');
-    // TODO: Load project from GraphQL if projectId !== 'new'
   }
 
   ngAfterViewInit(): void {
-    // Wire up history recording — push snapshot on canvas changes
     this.canvasWrapper.onObjectAdded$.pipe(takeUntil(this.destroy$)).subscribe(() => {
       this.historyState.push({
         json: this.canvasWrapper.snapshot(),
@@ -128,7 +134,6 @@ export class EditorComponent implements OnInit, OnDestroy {
       });
     });
 
-    // Debounce text changes to avoid pushing on every keystroke
     this.canvasWrapper.onTextChanged$.pipe(
       debounceTime(300),
       takeUntil(this.destroy$),
@@ -139,7 +144,6 @@ export class EditorComponent implements OnInit, OnDestroy {
       });
     });
 
-    // Sync zoom level from canvas wrapper
     this.canvasWrapper.onObjectModified$.pipe(takeUntil(this.destroy$)).subscribe(() => {
       this.zoomLevel.set(Math.round(this.canvasWrapper.getZoom() * 100));
     });
@@ -175,32 +179,6 @@ export class EditorComponent implements OnInit, OnDestroy {
       if (file) this.canvasWrapper.addImageFromFile(file);
     };
     input.click();
-  }
-
-  generateWithAI(prompt: string): void {
-    if (!prompt.trim()) return;
-    this.aiService.generateDesignStream(
-      prompt,
-      this.canvasState.canvasWidth(),
-      this.canvasState.canvasHeight(),
-    ).subscribe({
-      next: (data: string) => {
-        if (typeof data === 'string') {
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.elements) {
-              this.canvasWrapper.loadFromJSON(parsed);
-            }
-          } catch {
-            // Streaming chunk, not yet valid JSON
-          }
-        }
-      },
-      error: (err: unknown) => {
-        this.message.error('AI generation failed');
-        console.error('AI generation error:', err);
-      },
-    });
   }
 
   undo(): void {

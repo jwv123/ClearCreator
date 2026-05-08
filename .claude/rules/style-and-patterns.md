@@ -15,7 +15,17 @@
 - NG-ZORRO v21 tabs use `<nz-tabs>` and `<nz-tab>` (not `nz-tabset`)
 - `nz-button-group` is NOT available as a standalone directive in v21 — use a `<div class="btn-group">` with CSS flexbox instead
 - Editor sub-components live in `features/editor/components/` — each in its own directory with a single `.ts` file
-- EditorComponent is an orchestrator that composes TopbarComponent, SidebarComponent, CanvasAreaComponent, PropertiesPanelComponent, and LayersPanelComponent
+- EditorComponent is an orchestrator that composes TopbarComponent, SidebarComponent (tools only), CanvasAreaComponent, PropertiesPanelComponent, LayersPanelComponent, and AiPanelComponent
+- SidebarComponent contains only the tool grid (Text, Rect, Circle, Image). AI generation is in AiPanelComponent
+- AiPanelComponent lives in the right panel as a third tab (Properties | Layers | AI)
+
+## AI State Management
+
+- `AiService` (`core/services/`) is a pure HTTP/SSE layer with no Angular signals. It returns Observables and accepts AbortSignal
+- `AiState` (`features/editor/state/`) is the single reactive store for all AI-related UI state
+- Components read from `AiState` signals and call `AiState` methods. Never call `AiService` directly from components
+- `AiState` handles: model loading, generation orchestration, streaming text accumulation, Zod validation on apply, modify flow, error handling, cancellation via AbortController
+- The "Apply to Canvas" flow requires explicit user action — AI designs are previewed before applying
 
 ## Fabric.js (Canvas)
 

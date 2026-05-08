@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { Ollama } from 'ollama';
-import { DesignGenerationSchema } from '@clearcreator/ai-schemas';
+import { DesignGenerationSchema, ModifyResponseSchema } from '@clearcreator/ai-schemas';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 
 const ollama = new Ollama({
   host: process.env.OLLAMA_HOST || 'https://ollama.com',
@@ -30,11 +31,18 @@ The design must follow this exact schema:
       "strokeWidth": number (optional),
       "opacity": number (0-1, optional),
       "angle": number (optional),
+      "scaleX": number (optional),
+      "scaleY": number (optional),
       "text": string (for textbox, optional),
       "fontFamily": string (Google Font name, optional),
       "fontSize": number (for textbox, optional),
       "fontWeight": string (for textbox, optional),
-      "textAlign": "left" | "center" | "right" | "justify" (optional)
+      "fontStyle": string (for textbox, optional),
+      "textAlign": "left" | "center" | "right" | "justify" (optional),
+      "lineHeight": number (optional),
+      "charSpacing": number (optional),
+      "src": string (for image, optional),
+      "uploadId": string (for image, optional)
     }
   ]
 }
@@ -118,6 +126,7 @@ aiRouter.post('/generate/stream', async (req, res) => {
         { role: 'system', content: DESIGN_SYSTEM_PROMPT },
         { role: 'user', content: `Create a design for: ${prompt}. Canvas size: ${canvasWidth || 1080}x${canvasHeight || 1080}px.` },
       ],
+      format: zodToJsonSchema(DesignGenerationSchema),
       stream: true,
     });
 
@@ -157,40 +166,11 @@ aiRouter.post('/modify', async (req, res) => {
       stream: false,
     });
 
-    res.json(JSON.parse(response.message.content));
+    const parsed = JSON.parse(response.message.content);
+    const validated = ModifyResponseSchema.parse(parsed);
+    res.json(validated);
   } catch (error: any) {
+    console.error('AI modify error:', error);
     res.status(500).json({ error: error.message });
   }
 });
-
-// Helper: Convert Zod schema to JSON Schema for Ollama's format parameter
-function zodToJsonSchema(schema: any): object {
-  // Simplified conversion — for production, use zod-to-json-schema package
-  return {
-    type: 'object',
-    properties: {
-      canvasWidth: { type: 'number' },
-      canvasHeight: { type: 'number' },
-      backgroundColor: { type: 'string' },
-      elements: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            type: { type: 'string', enum: ['textbox', 'rect', 'circle', 'triangle', 'image', 'line'] },
-            left: { type: 'number' },
-            top: { type: 'number' },
-            text: { type: 'string' },
-            fontFamily: { type: 'string' },
-            fontSize: { type: 'number' },
-            fill: { type: 'string' },
-            stroke: { type: 'string' },
-            opacity: { type: 'number' },
-          },
-          required: ['type', 'left', 'top'],
-        },
-      },
-    },
-    required: ['canvasWidth', 'canvasHeight', 'backgroundColor', 'elements'],
-  };
-}

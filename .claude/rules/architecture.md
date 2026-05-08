@@ -19,11 +19,11 @@ No build step for `libs/` — the API references them via TypeScript path aliase
 
 1. **CanvasWrapperService** (`features/editor/canvas/`) — owns the Fabric.js `Canvas` instance. Bridges imperative canvas ops to Angular reactivity via signals (`selectedObjectIds`, `selectedObjectType`) and RxJS Subjects (`onObjectModified$`, `onTextChanged$`, `onObjectsReordered$`, etc.). Every element gets `crypto.randomUUID()` as its `id`. Provides layer ordering (bringForward/sendBackward), visibility toggles, lock/unlock, duplicate, group/ungroup, and `getElementProperties()`.
 
-2. **State services** (`features/editor/state/`) — lightweight signal bags. `SelectionState` derives from CanvasWrapper. `HistoryState` does undo/redo via `snapshot()/restoreSnapshot()` (50-entry stack, wired to canvas events via debounced subscriptions in EditorComponent). `CanvasState` holds project metadata. `AiState` holds generation state.
+2. **State services** (`features/editor/state/`) — lightweight signal bags. `SelectionState` derives from CanvasWrapper. `HistoryState` does undo/redo via `snapshot()/restoreSnapshot()` (50-entry stack, wired to canvas events via debounced subscriptions in EditorComponent). `CanvasState` holds project metadata. `AiState` is the single reactive store for all AI-related state — it holds `models`, `selectedModel`, `isGenerating`, `streamingText`, `generationStatus`, `lastDesign`, `lastError`, `selectedContext` (computed from SelectionState), and orchestrates generate/apply/modify flows.
 
-3. **Editor sub-components** (`features/editor/components/`) — `TopbarComponent`, `SidebarComponent`, `CanvasAreaComponent`, `PropertiesPanelComponent`, `LayersPanelComponent`. EditorComponent orchestrates them. PropertiesPanel shows context-sensitive controls (text/shape/image/canvas). LayersPanel lists objects in z-order with visibility/lock toggles.
+3. **Editor sub-components** (`features/editor/components/`) — `TopbarComponent`, `SidebarComponent` (tools only), `CanvasAreaComponent`, `PropertiesPanelComponent`, `LayersPanelComponent`, `AiPanelComponent`. EditorComponent orchestrates them. The right panel has three tabs: Properties, Layers, AI.
 
-4. **Infrastructure services** (`core/services/`) — `AuthService` wraps Supabase auth (BehaviorSubject + signals). `AiService` uses raw `fetch` for SSE streaming, `HttpClient` for non-streaming. `SupabaseService` is a singleton client wrapper.
+4. **Infrastructure services** (`core/services/`) — `AuthService` wraps Supabase auth (BehaviorSubject + signals). `AiService` is a pure HTTP/SSE layer with no signals — it returns Observables and accepts AbortSignal. `SupabaseService` is a singleton client wrapper.
 
 ## Dev Proxy
 
@@ -34,10 +34,10 @@ Angular dev server proxies `/api/*` to `localhost:3001` via `apps/web/proxy.conf
 Express server at port 3001 proxies all AI calls to Ollama Cloud:
 - `GET /api/ai/models` — lists models via `ollama.list()`
 - `POST /api/ai/generate` — non-streaming, validates through `DesignGenerationSchema` (Zod)
-- `POST /api/ai/generate/stream` — SSE streaming. Chunks: `data: { content, done }`. Final: `data: { validated, design, done }`
-- `POST /api/ai/modify` — element modification with `MODIFY_SYSTEM_PROMPT`
+- `POST /api/ai/generate/stream` — SSE streaming. Chunks: `data: { content, done }`. Final: `data: { validated, design, done }`. Uses `zod-to-json-schema` for the `format` parameter.
+- `POST /api/ai/modify` — element modification with `MODIFY_SYSTEM_PROMPT`, validates response with `ModifyResponseSchema`
 
-System prompts in `ollama.service.ts` define the JSON schema contract between AI and canvas. The `zodToJsonSchema()` helper converts Zod schemas to Ollama's `format` parameter.
+System prompts in `ollama.service.ts` define the JSON schema contract between AI and canvas. The `zodToJsonSchema()` function from `zod-to-json-schema` converts Zod schemas to Ollama's `format` parameter.
 
 ## Supabase Roles
 
@@ -52,11 +52,13 @@ System prompts in `ollama.service.ts` define the JSON schema contract between AI
 | Canvas wrapper (Fabric.js bridge) | `apps/web/src/app/features/editor/canvas/canvas-wrapper.service.ts` |
 | Editor orchestrator | `apps/web/src/app/features/editor/editor.component.ts` |
 | Topbar component | `apps/web/src/app/features/editor/components/topbar/topbar.component.ts` |
-| Sidebar component | `apps/web/src/app/features/editor/components/sidebar/sidebar.component.ts` |
+| Sidebar component (tools only) | `apps/web/src/app/features/editor/components/sidebar/sidebar.component.ts` |
 | Canvas area component | `apps/web/src/app/features/editor/components/canvas-area/canvas-area.component.ts` |
 | Properties panel | `apps/web/src/app/features/editor/components/properties-panel/properties-panel.component.ts` |
 | Layers panel | `apps/web/src/app/features/editor/components/layers-panel/layers-panel.component.ts` |
-| AI streaming service | `apps/web/src/app/core/services/ai.service.ts` |
+| AI panel | `apps/web/src/app/features/editor/components/ai-panel/ai-panel.component.ts` |
+| AI state (reactive store) | `apps/web/src/app/features/editor/state/ai.state.ts` |
+| AI service (HTTP/SSE layer) | `apps/web/src/app/core/services/ai.service.ts` |
 | Ollama proxy + system prompts | `apps/api/src/services/ollama.service.ts` |
 | GraphQL schema + resolvers | `apps/api/src/graphql/schema/index.ts`, `apps/api/src/graphql/resolvers/index.ts` |
 | Zod schemas for AI validation | `libs/ai-schemas/src/poster-design.schema.ts` |

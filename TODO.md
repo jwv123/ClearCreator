@@ -29,13 +29,13 @@
 - [x] Build `LayersPanelComponent` — z-order list with drag reorder, visibility, lock toggles
 - [x] Add dev proxy config (`proxy.conf.json`) so `/api/*` routes to `localhost:3001`
 
-## Phase 5: AI Integration
-- [ ] Test Ollama Cloud API connectivity end-to-end
-- [ ] Build `AiPanelComponent` with streaming response display
-- [ ] Implement "Apply to Canvas" flow — parse AI JSON, validate with Zod, call `CanvasWrapperService.loadFromJSON()`
-- [ ] Implement "Modify Element" flow — parse AI changes, call `CanvasWrapperService.updateElement()`
-- [ ] Add model selector dropdown (fetches from `GET /api/ai/models`)
-- [ ] Handle error cases (invalid JSON, network failures, rate limits)
+## Phase 5: AI Integration ✅
+- [x] Test Ollama Cloud API connectivity end-to-end
+- [x] Build `AiPanelComponent` with streaming response display
+- [x] Implement "Apply to Canvas" flow — parse AI JSON, validate with Zod, call `CanvasWrapperService.loadFromJSON()`
+- [x] Implement "Modify Element" flow — parse AI changes, call `CanvasWrapperService.updateElement()`
+- [x] Add model selector dropdown (fetches from `GET /api/ai/models`)
+- [x] Handle error cases (invalid JSON, network failures, rate limits)
 
 ## Phase 6: Font System
 - [ ] Implement `FontService` — fetch Google Fonts API, load fonts via `document.fonts.load()`

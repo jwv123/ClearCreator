@@ -34,5 +34,13 @@ export const DesignGenerationSchema = z.object({
   elements: z.array(CanvasElementSchema),
 });
 
+export const ModifyResponseSchema = z.object({
+  modifications: z.array(z.object({
+    id: z.string().optional(),
+    changes: z.record(z.any()),
+  })),
+});
+
 export type DesignGeneration = z.infer<typeof DesignGenerationSchema>;
 export type CanvasElementOutput = z.infer<typeof CanvasElementSchema>;
+export type ModifyResponse = z.infer<typeof ModifyResponseSchema>;
