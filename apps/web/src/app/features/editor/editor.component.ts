@@ -10,6 +10,7 @@ import { CanvasState } from './state/canvas.state';
 import { SelectionState } from './state/selection.state';
 import { HistoryState } from './state/history.state';
 import { AiState } from './state/ai.state';
+import { FontService } from '../../core/services/font.service';
 import { TopbarComponent } from './components/topbar/topbar.component';
 import { SidebarComponent } from './components/sidebar/sidebar.component';
 import { CanvasAreaComponent } from './components/canvas-area/canvas-area.component';
@@ -89,6 +90,7 @@ export class EditorComponent implements OnInit, OnDestroy {
   private selectionState = inject(SelectionState);
   private historyState = inject(HistoryState);
   private aiState = inject(AiState);
+  private fontService = inject(FontService);
   private message = inject(NzMessageService);
   private destroy$ = new Subject<void>();
 
@@ -110,6 +112,7 @@ export class EditorComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.projectId = this.route.snapshot.paramMap.get('id');
+    this.fontService.loadPopularFonts();
   }
 
   ngAfterViewInit(): void {

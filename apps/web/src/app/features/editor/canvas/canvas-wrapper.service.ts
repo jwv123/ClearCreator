@@ -138,13 +138,13 @@ export class CanvasWrapperService {
 
   // --- Element Operations ---
 
-  addTextElement(text = 'Double-click to edit'): void {
+  addTextElement(text = 'Double-click to edit', fontFamily = 'Arial'): void {
     const textObj = new Textbox(text, {
       left: 100,
       top: 100,
       width: 300,
       fontSize: 24,
-      fontFamily: 'Arial',
+      fontFamily,
       fill: '#000000',
     });
     (textObj as any).id = crypto.randomUUID();

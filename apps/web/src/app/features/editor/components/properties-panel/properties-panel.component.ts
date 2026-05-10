@@ -6,20 +6,21 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
-import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzDividerModule } from 'ng-zorro-antd/divider';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { CanvasWrapperService, ElementProperties } from '../../canvas/canvas-wrapper.service';
 import { SelectionState } from '../../state/selection.state';
 import { CanvasState } from '../../state/canvas.state';
+import { FontSelectorComponent } from '../font-selector/font-selector.component';
 
 @Component({
   selector: 'app-properties-panel',
   standalone: true,
   imports: [
     CommonModule, FormsModule, NzButtonModule, NzIconModule, NzInputModule,
-    NzInputNumberModule, NzSelectModule, NzDividerModule, NzTooltipModule, NzEmptyModule,
+    NzInputNumberModule, NzDividerModule, NzTooltipModule, NzEmptyModule,
+    FontSelectorComponent,
   ],
   template: `
     <div class="properties-content">
@@ -48,11 +49,7 @@ import { CanvasState } from '../../state/canvas.state';
         <h4>Text</h4>
         <div class="prop-group">
           <label>Font</label>
-          <nz-select [(ngModel)]="textProps.fontFamily" (ngModelChange)="updateProp('fontFamily', $event)" nzSize="small" class="full-width">
-            @for (font of fontFamilies; track font) {
-              <nz-option [nzValue]="font" [nzLabel]="font"></nz-option>
-            }
-          </nz-select>
+          <app-font-selector [selectedFont]="textProps.fontFamily" (fontChange)="onFontFamilyChange($event)" />
         </div>
         <div class="prop-row">
           <div class="prop-group flex-1">
@@ -220,7 +217,10 @@ export class PropertiesPanelComponent implements OnDestroy {
   // Circle properties (defaults)
   circleProps = { radius: 75, fill: '#e94560', stroke: '#c0392b', strokeWidth: 2, opacity: 1 };
 
-  fontFamilies = ['Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana', 'Courier New', 'Impact', 'Comic Sans MS', 'Trebuchet MS', 'Palatino'];
+  onFontFamilyChange(fontFamily: string): void {
+    this.textProps.fontFamily = fontFamily;
+    this.updateProp('fontFamily', fontFamily);
+  }
 
   private currentElementId: string | null = null;
 

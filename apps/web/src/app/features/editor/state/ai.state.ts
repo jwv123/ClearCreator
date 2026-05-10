@@ -2,6 +2,7 @@ import { Injectable, signal, computed, inject } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { AiService, AiModelInfo } from '../../../core/services/ai.service';
+import { FontService } from '../../../core/services/font.service';
 import { CanvasWrapperService } from '../canvas/canvas-wrapper.service';
 import { CanvasState } from './canvas.state';
 import { SelectionState } from './selection.state';
@@ -21,6 +22,7 @@ export class AiState {
   private canvasWrapper = inject(CanvasWrapperService);
   private canvasState = inject(CanvasState);
   private selectionState = inject(SelectionState);
+  private fontService = inject(FontService);
   private message = inject(NzMessageService);
 
   // --- Signals ---
@@ -129,7 +131,7 @@ export class AiState {
     });
   }
 
-  applyDesignToCanvas(): void {
+  async applyDesignToCanvas(): Promise<void> {
     const design = this.lastDesign();
     if (!design) {
       this.lastError.set('No design to apply.');
@@ -151,11 +153,36 @@ export class AiState {
       }
     }
 
+    // Load all fonts referenced in the design before rendering
+    const fontFamilies = this.extractFontFamilies(design);
+    if (fontFamilies.length > 0) {
+      try {
+        await this.fontService.ensureFontsLoaded(fontFamilies);
+      } catch {
+        console.warn('Some fonts failed to load, using fallbacks');
+      }
+    }
+
     this.canvasWrapper.loadFromJSON(design);
     this.generationStatus.set('idle');
     this.lastDesign.set(null);
     this.streamingText.set('');
     this.message.success('Design applied to canvas');
+  }
+
+  private extractFontFamilies(design: any): string[] {
+    const families = new Set<string>();
+    if (design.elements && Array.isArray(design.elements)) {
+      for (const el of design.elements) {
+        if (el.fontFamily) {
+          families.add(el.fontFamily);
+        }
+      }
+    }
+    // Also check canvas-level design tokens
+    if (design.headingFont) families.add(design.headingFont);
+    if (design.bodyFont) families.add(design.bodyFont);
+    return Array.from(families);
   }
 
   modifySelectedElements(instruction: string): void {
@@ -171,12 +198,24 @@ export class AiState {
     this.lastError.set(null);
 
     this.aiService.modifyElements(instruction, contexts, this.selectedModel()).subscribe({
-      next: (response: any) => {
+      next: async (response: any) => {
         this.isGenerating.set(false);
 
         if (!response?.modifications || !Array.isArray(response.modifications)) {
           this.lastError.set('AI returned an invalid modification response.');
           return;
+        }
+
+        // Preload any fonts referenced in modifications
+        const fontFamilies = response.modifications
+          .filter((mod: any) => mod.changes?.fontFamily)
+          .map((mod: any) => mod.changes.fontFamily);
+        if (fontFamilies.length > 0) {
+          try {
+            await this.fontService.ensureFontsLoaded(fontFamilies);
+          } catch {
+            console.warn('Some fonts failed to load, using fallbacks');
+          }
         }
 
         let applied = 0;

@@ -37,10 +37,10 @@
 - [x] Add model selector dropdown (fetches from `GET /api/ai/models`)
 - [x] Handle error cases (invalid JSON, network failures, rate limits)
 
-## Phase 6: Font System
-- [ ] Implement `FontService` — fetch Google Fonts API, load fonts via `document.fonts.load()`
-- [ ] Build `FontSelectorComponent` — searchable dropdown with font preview
-- [ ] Ensure fonts are loaded before Fabric.js renders text objects
+## Phase 6: Font System ✅
+- [x] Implement `FontService` — fetch Google Fonts API, load fonts via `document.fonts.load()`
+- [x] Build `FontSelectorComponent` — searchable dropdown with font preview
+- [x] Ensure fonts are loaded before Fabric.js renders text objects
 
 ## Phase 7: Image Uploads
 - [ ] Implement `UploadService` — create upload mutation, upload to Supabase Storage, return public URL

@@ -8,7 +8,7 @@ Phase summary:
 3. ✅ Dashboard — ProjectService with Apollo CRUD, ProjectCardComponent, TemplateGalleryComponent, create-from-template flow
 4. ✅ Canvas core — Fabric.js wrapper, editor layout, properties/layers panels
 5. ✅ AI integration — streaming generation, apply-to-canvas, model selector, modify elements, AiPanelComponent, AiState reactive store
-6. Font system — Google Fonts API, font loading, font selector
+6. ✅ Font system — Google Fonts API proxy, FontService with on-demand loading, FontSelectorComponent with search and preview, AI design font preloading
 7. Image uploads — Supabase Storage direct upload, assets panel
 8. Undo/redo + keyboard shortcuts
 9. Export — PNG/JPG client-side, PDF backend endpoint

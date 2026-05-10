@@ -3,7 +3,7 @@ import { createSupabaseClient } from '../utils/supabase-client.js';
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction) {
   // Skip auth for health check and AI models list
-  if (req.path === '/health' || req.path === '/ai/models') {
+  if (req.path === '/health' || req.path === '/ai/models' || req.path.startsWith('/fonts')) {
     return next();
   }
 

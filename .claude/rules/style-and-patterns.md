@@ -15,9 +15,10 @@
 - NG-ZORRO v21 tabs use `<nz-tabs>` and `<nz-tab>` (not `nz-tabset`)
 - `nz-button-group` is NOT available as a standalone directive in v21 — use a `<div class="btn-group">` with CSS flexbox instead
 - Editor sub-components live in `features/editor/components/` — each in its own directory with a single `.ts` file
-- EditorComponent is an orchestrator that composes TopbarComponent, SidebarComponent (tools only), CanvasAreaComponent, PropertiesPanelComponent, LayersPanelComponent, and AiPanelComponent
+- EditorComponent is an orchestrator that composes TopbarComponent, SidebarComponent (tools only), CanvasAreaComponent, PropertiesPanelComponent, LayersPanelComponent, AiPanelComponent, and FontSelectorComponent
 - SidebarComponent contains only the tool grid (Text, Rect, Circle, Image). AI generation is in AiPanelComponent
 - AiPanelComponent lives in the right panel as a third tab (Properties | Layers | AI)
+- FontSelectorComponent is used inside PropertiesPanelComponent for font family selection — it provides a searchable dropdown with System Fonts and Google Fonts groups, font preview rendering, and automatic font loading
 
 ## AI State Management
 
@@ -40,6 +41,15 @@
 - Visibility toggles: `toggleVisibility()`, `isElementVisible()`
 - Lock/unlock: `lockElement()`, `unlockElement()`, `isElementLocked()` — sets `selectable` and `evented` on the Fabric object
 - Export types use `ImageFormat` from `fabric` (`import { type ImageFormat } from 'fabric'`)
+
+## Font System
+
+- `FontService` (`core/services/`) manages Google Fonts — fetches font list from `/api/fonts/popular`, loads fonts on demand via Google Fonts CSS `<link>` injection + `document.fonts.load()`, clears Fabric.js `cache.clearFontCache()` after loading, deduplicates concurrent loads
+- `FontSelectorComponent` (`features/editor/components/font-selector/`) provides a searchable NZ-ZORRO dropdown with System Fonts and Google Fonts option groups, font preview rendering, and preloading
+- `AiState.applyDesignToCanvas()` extracts font families from AI designs and calls `FontService.ensureFontsLoaded()` before rendering — fonts are guaranteed loaded before `canvasWrapper.loadFromJSON()`
+- `AiState.modifySelectedElements()` preloads fonts from AI modifications before applying changes
+- `addTextElement()` accepts an optional `fontFamily` parameter (default `'Arial'`)
+- `EditorComponent.ngOnInit()` calls `FontService.loadPopularFonts()` to pre-populate the font list
 
 ## Backend (Node.js)
 

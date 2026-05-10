@@ -21,9 +21,9 @@ No build step for `libs/` — the API references them via TypeScript path aliase
 
 2. **State services** (`features/editor/state/`) — lightweight signal bags. `SelectionState` derives from CanvasWrapper. `HistoryState` does undo/redo via `snapshot()/restoreSnapshot()` (50-entry stack, wired to canvas events via debounced subscriptions in EditorComponent). `CanvasState` holds project metadata. `AiState` is the single reactive store for all AI-related state — it holds `models`, `selectedModel`, `isGenerating`, `streamingText`, `generationStatus`, `lastDesign`, `lastError`, `selectedContext` (computed from SelectionState), and orchestrates generate/apply/modify flows.
 
-3. **Editor sub-components** (`features/editor/components/`) — `TopbarComponent`, `SidebarComponent` (tools only), `CanvasAreaComponent`, `PropertiesPanelComponent`, `LayersPanelComponent`, `AiPanelComponent`. EditorComponent orchestrates them. The right panel has three tabs: Properties, Layers, AI.
+3. **Editor sub-components** (`features/editor/components/`) — `TopbarComponent`, `SidebarComponent` (tools only), `CanvasAreaComponent`, `PropertiesPanelComponent`, `LayersPanelComponent`, `AiPanelComponent`, `FontSelectorComponent`. EditorComponent orchestrates them. The right panel has three tabs: Properties, Layers, AI. `FontSelectorComponent` is used inside `PropertiesPanelComponent` for font family selection with search and Google Fonts preview.
 
-4. **Infrastructure services** (`core/services/`) — `AuthService` wraps Supabase auth (BehaviorSubject + signals). `AiService` is a pure HTTP/SSE layer with no signals — it returns Observables and accepts AbortSignal. `SupabaseService` is a singleton client wrapper.
+4. **Infrastructure services** (`core/services/`) — `AuthService` wraps Supabase auth (BehaviorSubject + signals). `AiService` is a pure HTTP/SSE layer with no signals — it returns Observables and accepts AbortSignal. `FontService` fetches Google Fonts via the backend proxy, manages font loading via `document.fonts.load()` and dynamic `<link>` injection, clears Fabric.js `charWidthsCache` after loading, and tracks loaded fonts in a signal. `SupabaseService` is a singleton client wrapper.
 
 ## Dev Proxy
 
@@ -36,6 +36,14 @@ Express server at port 3001 proxies all AI calls to Ollama Cloud:
 - `POST /api/ai/generate` — non-streaming, validates through `DesignGenerationSchema` (Zod)
 - `POST /api/ai/generate/stream` — SSE streaming. Chunks: `data: { content, done }`. Final: `data: { validated, design, done }`. Uses `zod-to-json-schema` for the `format` parameter.
 - `POST /api/ai/modify` — element modification with `MODIFY_SYSTEM_PROMPT`, validates response with `ModifyResponseSchema`
+
+## Backend Font Proxy
+
+Express server at port 3001 proxies Google Fonts API calls (keeps API key server-side):
+- `GET /api/fonts/popular` — returns ~30 curated popular Google Fonts (1hr in-memory cache)
+- `GET /api/fonts` — returns full Google Fonts catalog (1hr in-memory cache)
+- Both endpoints are unauthenticated (bypass auth middleware)
+- Requires `GOOGLE_FONTS_API_KEY` env var; returns empty list if not configured
 
 System prompts in `ollama.service.ts` define the JSON schema contract between AI and canvas. The `zodToJsonSchema()` function from `zod-to-json-schema` converts Zod schemas to Ollama's `format` parameter.
 
@@ -59,7 +67,10 @@ System prompts in `ollama.service.ts` define the JSON schema contract between AI
 | AI panel | `apps/web/src/app/features/editor/components/ai-panel/ai-panel.component.ts` |
 | AI state (reactive store) | `apps/web/src/app/features/editor/state/ai.state.ts` |
 | AI service (HTTP/SSE layer) | `apps/web/src/app/core/services/ai.service.ts` |
+| Font service (loading + state) | `apps/web/src/app/core/services/font.service.ts` |
+| Font selector component | `apps/web/src/app/features/editor/components/font-selector/font-selector.component.ts` |
 | Ollama proxy + system prompts | `apps/api/src/services/ollama.service.ts` |
+| Google Fonts proxy | `apps/api/src/services/font.service.ts` |
 | GraphQL schema + resolvers | `apps/api/src/graphql/schema/index.ts`, `apps/api/src/graphql/resolvers/index.ts` |
 | Zod schemas for AI validation | `libs/ai-schemas/src/poster-design.schema.ts` |
 | Shared TypeScript types | `libs/shared-types/src/` |

@@ -9,6 +9,7 @@ import { authMiddleware } from './middleware/auth.middleware.js';
 import { errorMiddleware } from './middleware/error.middleware.js';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware.js';
 import { aiRouter } from './services/ollama.service.js';
+import { fontRouter } from './services/font.service.js';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 
@@ -29,6 +30,9 @@ async function startServer() {
 
   // AI streaming endpoints
   app.use('/api/ai', aiRouter);
+
+  // Font catalog endpoints (public, no auth required)
+  app.use('/api/fonts', fontRouter);
 
   // Auth middleware for protected routes
   app.use('/api', authMiddleware);
@@ -59,6 +63,7 @@ async function startServer() {
     console.log(`🚀 API server running on http://localhost:${PORT}`);
     console.log(`📊 GraphQL endpoint: http://localhost:${PORT}/api/graphql`);
     console.log(`🤖 AI endpoint: http://localhost:${PORT}/api/ai`);
+    console.log(`🔤 Font endpoint: http://localhost:${PORT}/api/fonts`);
   });
 }
 
