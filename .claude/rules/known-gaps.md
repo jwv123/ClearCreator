@@ -1,8 +1,6 @@
 # Known Gaps (Not Yet Implemented)
 
-- **No project save/load** — `CanvasState.isDirty` exists but nothing persists canvas state to the backend (only image uploads are persisted via Supabase Storage).
 - **Auth middleware is permissive** — skips auth for `/health`, `/ai/models`, and `/fonts`, falls through for missing tokens.
-- **No PDF export endpoint** — `pdfmake` is a dependency but no `/api/export/pdf` route exists.
 - **Environment tokens are placeholders** — `YOUR_SUPABASE_ANON_KEY`, etc. in `environment.ts`. `GOOGLE_FONTS_API_KEY` env var required on backend for font catalog; falls back to empty list if missing.
 - **No tests** — all schematics have `skipTests: true`, no test runner configured, no spec files.
 - **Frontend doesn't use shared-types lib** — types are defined inline in components/services rather than importing from `@clearcreator/shared-types`. Frontend also can't import `@clearcreator/ai-schemas` (no path alias in web tsconfig) so Zod validation on frontend uses structural checks instead.

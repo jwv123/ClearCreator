@@ -8,6 +8,10 @@ export class AuthService {
   private userSubject = new BehaviorSubject<User | null>(null);
   readonly user$ = this.userSubject.asObservable();
 
+  get currentUser(): User | null {
+    return this.userSubject.value;
+  }
+
   isAuthenticated = signal(false);
   currentToken = signal<string | null>(null);
 

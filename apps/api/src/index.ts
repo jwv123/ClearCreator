@@ -10,6 +10,7 @@ import { errorMiddleware } from './middleware/error.middleware.js';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware.js';
 import { aiRouter } from './services/ollama.service.js';
 import { fontRouter } from './services/font.service.js';
+import { exportRouter } from './services/export.service.js';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 
@@ -36,6 +37,9 @@ async function startServer() {
 
   // Auth middleware for protected routes
   app.use('/api', authMiddleware);
+
+  // Export endpoints (protected) — increased limit for base64 image payloads
+  app.use('/api/export', express.json({ limit: '50mb' }), exportRouter);
 
   // Apollo Server
   const server = new ApolloServer({

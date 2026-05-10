@@ -15,7 +15,7 @@
 - NG-ZORRO v21 tabs use `<nz-tabs>` and `<nz-tab>` (not `nz-tabset`)
 - `nz-button-group` is NOT available as a standalone directive in v21 — use a `<div class="btn-group">` with CSS flexbox instead
 - Editor sub-components live in `features/editor/components/` — each in its own directory with a single `.ts` file
-- EditorComponent is an orchestrator that composes TopbarComponent, SidebarComponent (tools only), CanvasAreaComponent, PropertiesPanelComponent, LayersPanelComponent, AiPanelComponent, AssetsPanelComponent, and FontSelectorComponent
+- EditorComponent is an orchestrator that composes TopbarComponent, SidebarComponent (tools only), CanvasAreaComponent, PropertiesPanelComponent, LayersPanelComponent, AiPanelComponent, AssetsPanelComponent, FontSelectorComponent, and ExportDialogComponent (via NzModalService)
 - SidebarComponent contains only the tool grid (Text, Rect, Circle, Image). AI generation is in AiPanelComponent
 - AiPanelComponent lives in the right panel as a third tab (Properties | Layers | AI | Assets)
 - SidebarComponent's "Image" button switches the right panel to the Assets tab instead of opening a file dialog
@@ -78,6 +78,27 @@
 - Zod schemas from `@clearcreator/ai-schemas` validate AI output before sending to frontend
 - SSE streaming for AI generation: `for await (const part of response)` from Ollama JS client, written as `data: {JSON}\n\n`
 - Rate limiting is in-memory (100 req/min per IP) — fine for dev, needs Redis for production
+- PDF export uses pdfmake (`PdfPrinter`) with Roboto VFS fonts — only embeds images, no text rendering needed
+- Export endpoint at `POST /api/export/pdf` uses `express.json({ limit: '50mb' })` for large base64 payloads
+
+## Export System
+
+- `ExportDialogComponent` is opened via `NzModalService.create()` from the topbar Export button
+- PNG/JPG export: client-side via `CanvasWrapperService.toDataURL()` with format/multiplier/quality options, triggers browser download via anchor element
+- PDF export: client generates canvas image via `toDataURL()`, POSTs to `/api/export/pdf` with image data, page size, and orientation; server generates PDF via pdfmake and returns binary blob
+- `ExportDialogComponent` supports format selection (PNG/JPG/PDF), resolution multiplier (1x–4x), JPG quality slider, and PDF page size/orientation
+- Fabric.js `ImageFormat` type: use `'jpeg'` (not `'jpg'`) for JPEG format
+
+## Auto-Save System
+
+- EditorComponent subscribes to canvas change events and pushes to `saveTrigger$` Subject
+- `saveTrigger$.pipe(debounceTime(5000))` triggers `autoSave()` — 5-second debounce after last change
+- `autoSave()` serializes canvas JSON, generates thumbnail via `toDataURL({ multiplier: 0.5 })`, uploads thumbnail via `ThumbnailService`, calls `ProjectService.updateProject()`
+- `ThumbnailService.uploadThumbnail()` uploads to `thumbnails/{userId}/{projectId}.png` in Supabase Storage with `upsert: true`; falls back to base64 data URL if Storage fails
+- On component destroy (`ngOnDestroy`), force-saves if dirty
+- `CanvasState` signals: `saving`, `isLoading`, `isDirty`, `lastSavedAt`, with `markDirty()` and `markClean()` methods
+- TopbarComponent shows save status: "Saving..." (blue spinner), "Unsaved" (yellow dot), "Saved" (green check)
+- Project is loaded on editor init via `ProjectService.getProject()` when route has `:id`
 
 ## Database
 

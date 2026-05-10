@@ -21,9 +21,9 @@ No build step for `libs/` — the API references them via TypeScript path aliase
 
 2. **State services** (`features/editor/state/`) — lightweight signal bags. `SelectionState` derives from CanvasWrapper. `HistoryState` does undo/redo via `snapshot()/restoreSnapshot()` (50-entry stack, wired to canvas events via debounced subscriptions in EditorComponent). `CanvasState` holds project metadata. `AiState` is the single reactive store for all AI-related state — it holds `models`, `selectedModel`, `isGenerating`, `streamingText`, `generationStatus`, `lastDesign`, `lastError`, `selectedContext` (computed from SelectionState), and orchestrates generate/apply/modify flows.
 
-3. **Editor sub-components** (`features/editor/components/`) — `TopbarComponent`, `SidebarComponent` (tools only), `CanvasAreaComponent`, `PropertiesPanelComponent`, `LayersPanelComponent`, `AiPanelComponent`, `AssetsPanelComponent`, `FontSelectorComponent`. EditorComponent orchestrates them. The right panel has four tabs: Properties, Layers, AI, Assets. `FontSelectorComponent` is used inside `PropertiesPanelComponent` for font family selection with search and Google Fonts preview. `AssetsPanelComponent` shows uploaded images in a grid with click-to-add-to-canvas.
+3. **Editor sub-components** (`features/editor/components/`) — `TopbarComponent`, `SidebarComponent` (tools only), `CanvasAreaComponent`, `PropertiesPanelComponent`, `LayersPanelComponent`, `AiPanelComponent`, `AssetsPanelComponent`, `FontSelectorComponent`, `ExportDialogComponent`. EditorComponent orchestrates them. The right panel has four tabs: Properties, Layers, AI, Assets. `FontSelectorComponent` is used inside `PropertiesPanelComponent` for font family selection with search and Google Fonts preview. `AssetsPanelComponent` shows uploaded images in a grid with click-to-add-to-canvas. `ExportDialogComponent` is opened via `NzModalService` from the topbar Export button — supports PNG/JPG (client-side via `toDataURL`) and PDF (server-side via `/api/export/pdf`).
 
-4. **Infrastructure services** (`core/services/`) — `AuthService` wraps Supabase auth (BehaviorSubject + signals). `AiService` is a pure HTTP/SSE layer with no signals — it returns Observables and accepts AbortSignal. `FontService` fetches Google Fonts via the backend proxy, manages font loading via `document.fonts.load()` and dynamic `<link>` injection, clears Fabric.js `charWidthsCache` after loading, and tracks loaded fonts in a signal. `SupabaseService` is a singleton client wrapper. `UploadService` manages image uploads — two-phase flow (createUpload mutation then upload to Supabase Storage), tracks uploads in a signal, provides deleteUpload and loadUploads. `KeyboardShortcutsService` listens to `keydown` events on `document`, delegates to CanvasWrapperService and HistoryState, and manages clipboard state for copy/paste. Activated/deactivated by EditorComponent lifecycle.
+4. **Infrastructure services** (`core/services/`) — `AuthService` wraps Supabase auth (BehaviorSubject + signals, exposes `currentUser` getter). `AiService` is a pure HTTP/SSE layer with no signals — it returns Observables and accepts AbortSignal. `FontService` fetches Google Fonts via the backend proxy, manages font loading via `document.fonts.load()` and dynamic `<link>` injection, clears Fabric.js `charWidthsCache` after loading, and tracks loaded fonts in a signal. `SupabaseService` is a singleton client wrapper. `UploadService` manages image uploads — two-phase flow (createUpload mutation then upload to Supabase Storage), tracks uploads in a signal, provides deleteUpload and loadUploads. `ThumbnailService` uploads canvas thumbnails to Supabase Storage at `thumbnails/{userId}/{projectId}.png` with upsert, falls back to base64 data URL if Storage fails. `ProjectService` provides CRUD operations via Apollo GraphQL including `getProject()` for loading project data in the editor. `KeyboardShortcutsService` listens to `keydown` events on `document`, delegates to CanvasWrapperService and HistoryState, and manages clipboard state for copy/paste. Activated/deactivated by EditorComponent lifecycle.
 
 5. **Keyboard shortcuts** — `KeyboardShortcutsService` (`features/editor/`) handles: Ctrl+Z (undo), Ctrl+Y / Ctrl+Shift+Z (redo), Delete/Backspace (delete selected), Ctrl+C (copy), Ctrl+V (paste), Ctrl+G (group), Ctrl+Shift+G (ungroup), Ctrl+A (select all), Arrow keys (nudge 1px, 10px with Shift). Ignores events when focus is in INPUT/TEXTAREA/contentEditable elements.
 
@@ -48,6 +48,15 @@ Express server at port 3001 proxies Google Fonts API calls (keeps API key server
 - Requires `GOOGLE_FONTS_API_KEY` env var; returns empty list if not configured
 
 System prompts in `ollama.service.ts` define the JSON schema contract between AI and canvas. The `zodToJsonSchema()` function from `zod-to-json-schema` converts Zod schemas to Ollama's `format` parameter.
+
+## Backend Export Endpoint
+
+Express server at port 3001 provides PDF generation:
+- `POST /api/export/pdf` — accepts `{ imageDataUrl, canvasWidth, canvasHeight, backgroundColor, pageSize, orientation, multiplier }`, generates PDF via pdfmake, returns PDF binary. Protected by auth middleware. JSON body limit increased to 50mb for base64 image payloads.
+
+## Auto-Save
+
+EditorComponent subscribes to canvas change events (object added/modified/removed, text changed) and pushes to a `saveTrigger$` Subject. A 5-second debounce fires `autoSave()` which serializes canvas JSON, generates a thumbnail via `CanvasWrapperService.toDataURL()` at 0.5x multiplier, uploads thumbnail to Supabase Storage via `ThumbnailService`, and calls `ProjectService.updateProject()`. On component destroy, a force-save fires if dirty. Project is loaded on editor init via `ProjectService.getProject()` when a route `:id` exists. `CanvasState` tracks `saving`, `isLoading`, `isDirty`, and `lastSavedAt` signals.
 
 ## Supabase Roles
 
@@ -74,6 +83,9 @@ System prompts in `ollama.service.ts` define the JSON schema contract between AI
 | Upload service (Supabase Storage) | `apps/web/src/app/core/services/upload.service.ts` |
 | Keyboard shortcuts service | `apps/web/src/app/features/editor/keyboard-shortcuts.service.ts` |
 | Font selector component | `apps/web/src/app/features/editor/components/font-selector/font-selector.component.ts` |
+| Export dialog component | `apps/web/src/app/features/editor/components/export-dialog/export-dialog.component.ts` |
+| Thumbnail service (Supabase Storage) | `apps/web/src/app/core/services/thumbnail.service.ts` |
+| Export service (PDF generation) | `apps/api/src/services/export.service.ts` |
 | Ollama proxy + system prompts | `apps/api/src/services/ollama.service.ts` |
 | Google Fonts proxy | `apps/api/src/services/font.service.ts` |
 | GraphQL schema + resolvers | `apps/api/src/graphql/schema/index.ts`, `apps/api/src/graphql/resolvers/index.ts` |

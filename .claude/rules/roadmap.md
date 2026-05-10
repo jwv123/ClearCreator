@@ -1,6 +1,6 @@
 # Roadmap
 
-See [TODO.md](../../TODO.md) for the full phased checklist. Phases 1–8 are complete.
+See [TODO.md](../../TODO.md) for the full phased checklist. Phases 1–9 are complete.
 
 Phase summary:
 1. ✅ Scaffolding — project structure, dependencies, migrations
@@ -11,5 +11,5 @@ Phase summary:
 6. ✅ Font system — Google Fonts API proxy, FontService with on-demand loading, FontSelectorComponent with search and preview, AI design font preloading
 7. ✅ Image uploads — UploadService, Supabase Storage direct upload, AssetsPanelComponent with click-to-add, image dimensions, FabricImage integration
 8. ✅ Keyboard shortcuts — KeyboardShortcutsService, Ctrl+Z/Y for undo/redo, Delete/Backspace, Ctrl+C/V copy/paste, Ctrl+G/Shift+G group/ungroup, Ctrl+A select all, arrow key nudge (1px / 10px with Shift)
-9. Export — PNG/JPG client-side, PDF backend endpoint
-10. Polish — auto-save, thumbnails, lazy loading, performance
+9. ✅ Export — PNG/JPG client-side export, PDF backend endpoint via pdfmake, ExportDialogComponent with format/quality/resolution options, auto-save with 5s debounce, thumbnail generation to Supabase Storage, project load in editor, save status indicator
+10. Polish — lazy loading, performance

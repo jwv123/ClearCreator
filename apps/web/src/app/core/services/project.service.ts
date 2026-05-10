@@ -36,6 +36,26 @@ export interface Template {
 
 // ── GraphQL Documents ──
 
+const PROJECT_QUERY = gql<{ project: Project }, { id: string }>`
+  query Project($id: ID!) {
+    project(id: $id) {
+      id
+      ownerId
+      name
+      description
+      canvasJson
+      canvasWidth
+      canvasHeight
+      backgroundColor
+      thumbnailUrl
+      isTemplate
+      isPublic
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
 const MY_PROJECTS_QUERY = gql<{ myProjects: Project[] }, { limit?: number; offset?: number }>`
   query MyProjects($limit: Int, $offset: Int) {
     myProjects(limit: $limit, offset: $offset) {
@@ -170,6 +190,12 @@ export interface UpdateProjectInput {
 @Injectable({ providedIn: 'root' })
 export class ProjectService {
   private apollo = inject(Apollo);
+
+  getProject(id: string): Observable<Project> {
+    return this.apollo
+      .query({ query: PROJECT_QUERY, variables: { id } })
+      .pipe(map((result) => result.data!.project));
+  }
 
   getMyProjects(limit = 20, offset = 0): Observable<Project[]> {
     return this.apollo

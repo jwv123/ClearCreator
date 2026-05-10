@@ -1,9 +1,10 @@
-import { Component, OnInit, OnDestroy, inject, ViewChild, signal, effect } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit, inject, ViewChild, signal, effect } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { Subject, takeUntil, debounceTime } from 'rxjs';
+import { Subject, takeUntil, debounceTime, merge } from 'rxjs';
 import { NzLayoutModule } from 'ng-zorro-antd/layout';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
+import { NzModalService } from 'ng-zorro-antd/modal';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { CanvasWrapperService } from './canvas/canvas-wrapper.service';
 import { CanvasState } from './state/canvas.state';
@@ -11,6 +12,8 @@ import { SelectionState } from './state/selection.state';
 import { HistoryState } from './state/history.state';
 import { AiState } from './state/ai.state';
 import { FontService } from '../../core/services/font.service';
+import { ProjectService } from '../../core/services/project.service';
+import { ThumbnailService } from '../../core/services/thumbnail.service';
 import { TopbarComponent } from './components/topbar/topbar.component';
 import { SidebarComponent } from './components/sidebar/sidebar.component';
 import { CanvasAreaComponent } from './components/canvas-area/canvas-area.component';
@@ -18,6 +21,7 @@ import { PropertiesPanelComponent } from './components/properties-panel/properti
 import { LayersPanelComponent } from './components/layers-panel/layers-panel.component';
 import { AiPanelComponent } from './components/ai-panel/ai-panel.component';
 import { AssetsPanelComponent } from './components/assets-panel/assets-panel.component';
+import { ExportDialogComponent } from './components/export-dialog/export-dialog.component';
 import { KeyboardShortcutsService } from './keyboard-shortcuts.service';
 
 @Component({
@@ -35,7 +39,9 @@ import { KeyboardShortcutsService } from './keyboard-shortcuts.service';
         [canUndo]="canUndo()"
         [canRedo]="canRedo()"
         [zoomLevel]="zoomLevel()"
-        (projectNameChange)="projectName.set($event)"
+        [saving]="canvasState.saving()"
+        [isDirty]="canvasState.isDirty()"
+        (projectNameChange)="onProjectNameChange($event)"
         (goBack)="goBack()"
         (undo)="undo()"
         (redo)="redo()"
@@ -87,16 +93,19 @@ import { KeyboardShortcutsService } from './keyboard-shortcuts.service';
     .editor-right-panel ::ng-deep .ant-tabs-content { height: calc(100% - 46px); overflow-y: auto; }
   `],
 })
-export class EditorComponent implements OnInit, OnDestroy {
+export class EditorComponent implements OnInit, OnDestroy, AfterViewInit {
   private canvasWrapper = inject(CanvasWrapperService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
-  private canvasState = inject(CanvasState);
+  canvasState = inject(CanvasState);
   private selectionState = inject(SelectionState);
   private historyState = inject(HistoryState);
   private aiState = inject(AiState);
   private fontService = inject(FontService);
+  private projectService = inject(ProjectService);
+  private thumbnailService = inject(ThumbnailService);
   private message = inject(NzMessageService);
+  private modal = inject(NzModalService);
   private keyboardShortcuts = inject(KeyboardShortcutsService);
   private destroy$ = new Subject<void>();
 
@@ -107,6 +116,8 @@ export class EditorComponent implements OnInit, OnDestroy {
   canRedo = this.historyState.canRedo;
 
   private projectId: string | null = null;
+  private pendingProjectJson: string | null = null;
+  private saveTrigger$ = new Subject<void>();
 
   constructor() {
     effect(() => {
@@ -120,6 +131,13 @@ export class EditorComponent implements OnInit, OnDestroy {
     this.projectId = this.route.snapshot.paramMap.get('id');
     this.fontService.loadPopularFonts();
     this.keyboardShortcuts.activate();
+
+    if (this.projectId) {
+      this.canvasState.projectId.set(this.projectId);
+      this.loadProject(this.projectId);
+    } else {
+      this.canvasState.isLoading.set(false);
+    }
   }
 
   ngAfterViewInit(): void {
@@ -128,6 +146,8 @@ export class EditorComponent implements OnInit, OnDestroy {
         json: this.canvasWrapper.snapshot(),
         timestamp: Date.now(),
       });
+      this.canvasState.markDirty();
+      this.saveTrigger$.next();
     });
 
     this.canvasWrapper.onObjectRemoved$.pipe(takeUntil(this.destroy$)).subscribe(() => {
@@ -135,6 +155,8 @@ export class EditorComponent implements OnInit, OnDestroy {
         json: this.canvasWrapper.snapshot(),
         timestamp: Date.now(),
       });
+      this.canvasState.markDirty();
+      this.saveTrigger$.next();
     });
 
     this.canvasWrapper.onObjectModified$.pipe(takeUntil(this.destroy$)).subscribe(() => {
@@ -142,6 +164,8 @@ export class EditorComponent implements OnInit, OnDestroy {
         json: this.canvasWrapper.snapshot(),
         timestamp: Date.now(),
       });
+      this.canvasState.markDirty();
+      this.saveTrigger$.next();
     });
 
     this.canvasWrapper.onTextChanged$.pipe(
@@ -152,17 +176,116 @@ export class EditorComponent implements OnInit, OnDestroy {
         json: this.canvasWrapper.snapshot(),
         timestamp: Date.now(),
       });
+      this.canvasState.markDirty();
+      this.saveTrigger$.next();
     });
 
     this.canvasWrapper.onObjectModified$.pipe(takeUntil(this.destroy$)).subscribe(() => {
       this.zoomLevel.set(Math.round(this.canvasWrapper.getZoom() * 100));
     });
+
+    // Load project data if it was fetched before canvas init
+    if (this.pendingProjectJson) {
+      this.loadCanvasFromJson(this.pendingProjectJson);
+      this.pendingProjectJson = null;
+    }
+
+    // Auto-save: debounce 5s after last change
+    this.saveTrigger$.pipe(
+      debounceTime(5000),
+      takeUntil(this.destroy$),
+    ).subscribe(() => {
+      this.autoSave();
+    });
   }
 
   ngOnDestroy(): void {
+    // Force-save any unsaved changes
+    if (this.canvasState.isDirty() && this.canvasState.projectId()) {
+      this.autoSave();
+    }
     this.keyboardShortcuts.deactivate();
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  private loadProject(id: string): void {
+    this.canvasState.isLoading.set(true);
+    this.projectService.getProject(id).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (project) => {
+        this.projectName.set(project.name);
+        this.canvasState.projectName.set(project.name);
+        this.canvasState.canvasWidth.set(project.canvasWidth);
+        this.canvasState.canvasHeight.set(project.canvasHeight);
+        this.canvasState.canvasBackground.set(project.backgroundColor);
+
+        if (project.canvasJson && project.canvasJson !== '{}') {
+          this.pendingProjectJson = project.canvasJson;
+        }
+
+        this.canvasState.isLoading.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to load project:', err);
+        this.message.error('Failed to load project');
+        this.canvasState.isLoading.set(false);
+      },
+    });
+  }
+
+  private loadCanvasFromJson(json: string): void {
+    try {
+      const parsed = JSON.parse(json);
+      if (parsed && typeof parsed === 'object') {
+        this.canvasWrapper.loadFromJSON(parsed);
+      }
+    } catch {
+      // Invalid JSON — start with blank canvas
+    }
+    this.canvasState.markClean();
+  }
+
+  private async autoSave(): Promise<void> {
+    const projectId = this.canvasState.projectId();
+    if (!projectId || !this.canvasState.isDirty()) return;
+
+    this.canvasState.saving.set(true);
+    const canvasJson = JSON.stringify(this.canvasWrapper.toJSON());
+    let thumbnailUrl: string;
+
+    try {
+      const dataUrl = this.canvasWrapper.toDataURL({ format: 'png', multiplier: 0.5 });
+      thumbnailUrl = await this.thumbnailService.uploadThumbnail(projectId, dataUrl);
+    } catch {
+      // Fallback: store as base64 data URL if Storage upload fails
+      thumbnailUrl = this.canvasWrapper.toDataURL({ format: 'png', multiplier: 0.25 });
+    }
+
+    this.projectService.updateProject({
+      id: projectId,
+      canvasJson,
+      canvasWidth: this.canvasWrapper.getCanvasWidth(),
+      canvasHeight: this.canvasWrapper.getCanvasHeight(),
+      backgroundColor: this.canvasWrapper.getBackgroundColor(),
+      name: this.projectName(),
+      thumbnailUrl,
+    }).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        this.canvasState.markClean();
+        this.canvasState.saving.set(false);
+      },
+      error: (err) => {
+        console.error('Auto-save failed:', err);
+        this.canvasState.saving.set(false);
+      },
+    });
+  }
+
+  onProjectNameChange(name: string): void {
+    this.projectName.set(name);
+    this.canvasState.projectName.set(name);
+    this.canvasState.markDirty();
+    this.saveTrigger$.next();
   }
 
   goBack(): void {
@@ -211,10 +334,12 @@ export class EditorComponent implements OnInit, OnDestroy {
   }
 
   showExportDialog(): void {
-    const dataUrl = this.canvasWrapper.toDataURL({ format: 'png', multiplier: 2 });
-    const link = document.createElement('a');
-    link.download = `${this.projectName()}.png`;
-    link.href = dataUrl;
-    link.click();
+    this.modal.create({
+      nzTitle: 'Export Design',
+      nzContent: ExportDialogComponent,
+      nzFooter: null,
+      nzWidth: 520,
+      nzCentered: true,
+    });
   }
 }

@@ -52,12 +52,12 @@
 - [x] Implement undo/redo in `HistoryState` — wired to canvas events via EditorComponent subscriptions (object:added, object:modified, object:removed, debounced text:changed)
 - [x] Add keyboard shortcuts: Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z, Delete, Ctrl+C/V, Ctrl+G/Shift+G, Ctrl+A, arrow keys
 
-## Phase 9: Export
-- [ ] Implement PNG/JPG export via `CanvasWrapperService.toDataURL()`
-- [ ] Add PDF export endpoint on backend (`POST /api/export/pdf` using pdfmake)
-- [ ] Build `ExportDialogComponent` — format selection, resolution multiplier, PDF page size
-- [ ] Implement auto-save (debounced, every 5s of inactivity)
-- [ ] Generate thumbnail on save via `CanvasWrapperService.toDataURL()` at low multiplier
+## Phase 9: Export ✅
+- [x] Implement PNG/JPG export via `CanvasWrapperService.toDataURL()`
+- [x] Add PDF export endpoint on backend (`POST /api/export/pdf` using pdfmake)
+- [x] Build `ExportDialogComponent` — format selection, resolution multiplier, PDF page size
+- [x] Implement auto-save (debounced, every 5s of inactivity)
+- [x] Generate thumbnail on save via `CanvasWrapperService.toDataURL()` at low multiplier
 
 ## Phase 10: Polish
 - [ ] Lazy load Fabric.js (dynamic `import()`) to reduce initial bundle size
