@@ -18,6 +18,7 @@ import { PropertiesPanelComponent } from './components/properties-panel/properti
 import { LayersPanelComponent } from './components/layers-panel/layers-panel.component';
 import { AiPanelComponent } from './components/ai-panel/ai-panel.component';
 import { AssetsPanelComponent } from './components/assets-panel/assets-panel.component';
+import { KeyboardShortcutsService } from './keyboard-shortcuts.service';
 
 @Component({
   selector: 'app-editor',
@@ -96,6 +97,7 @@ export class EditorComponent implements OnInit, OnDestroy {
   private aiState = inject(AiState);
   private fontService = inject(FontService);
   private message = inject(NzMessageService);
+  private keyboardShortcuts = inject(KeyboardShortcutsService);
   private destroy$ = new Subject<void>();
 
   projectName = signal('Untitled Project');
@@ -117,6 +119,7 @@ export class EditorComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.projectId = this.route.snapshot.paramMap.get('id');
     this.fontService.loadPopularFonts();
+    this.keyboardShortcuts.activate();
   }
 
   ngAfterViewInit(): void {
@@ -157,6 +160,7 @@ export class EditorComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.keyboardShortcuts.deactivate();
     this.destroy$.next();
     this.destroy$.complete();
   }

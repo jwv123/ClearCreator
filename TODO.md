@@ -48,9 +48,9 @@
 - [x] Handle image dimensions from upload metadata
 - [x] Wire `FabricImage.fromURL()` for adding uploaded images to canvas
 
-## Phase 8: Undo/Redo + Keyboard Shortcuts
+## Phase 8: Undo/Redo + Keyboard Shortcuts ✅
 - [x] Implement undo/redo in `HistoryState` — wired to canvas events via EditorComponent subscriptions (object:added, object:modified, object:removed, debounced text:changed)
-- [ ] Add keyboard shortcuts: Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z, Delete, Ctrl+C/V, Ctrl+G/Shift+G, Ctrl+A, arrow keys
+- [x] Add keyboard shortcuts: Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z, Delete, Ctrl+C/V, Ctrl+G/Shift+G, Ctrl+A, arrow keys
 
 ## Phase 9: Export
 - [ ] Implement PNG/JPG export via `CanvasWrapperService.toDataURL()`

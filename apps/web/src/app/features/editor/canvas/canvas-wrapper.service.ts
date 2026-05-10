@@ -515,6 +515,78 @@ export class CanvasWrapperService {
     this.canvas.renderAll();
   }
 
+  // --- Bulk operations for keyboard shortcuts ---
+
+  deleteSelected(): void {
+    const objects = this.canvas.getActiveObjects();
+    if (objects.length === 0) return;
+    this.canvas.discardActiveObject();
+    objects.forEach(obj => this.canvas.remove(obj));
+    this.canvas.renderAll();
+  }
+
+  selectAll(): void {
+    const objects = this.canvas.getObjects();
+    if (objects.length === 0) return;
+    const activeSelection = new (Canvas as any).ActiveSelection(objects, { canvas: this.canvas });
+    this.canvas.setActiveObject(activeSelection);
+    this.canvas.renderAll();
+  }
+
+  nudgeSelected(dx: number, dy: number): void {
+    const objects = this.canvas.getActiveObjects();
+    if (objects.length === 0) return;
+    objects.forEach(obj => {
+      obj.set({
+        left: (obj.left ?? 0) + dx,
+        top: (obj.top ?? 0) + dy,
+      });
+      obj.setCoords();
+    });
+    this.canvas.renderAll();
+    this.onObjectModified$.next({
+      id: objects.length === 1 ? (objects[0] as any).id || '' : '',
+      type: objects.length === 1 ? objects[0].type || '' : 'multiple',
+      changes: {},
+    });
+  }
+
+  // --- Clipboard ---
+
+  private clipboard: object[] = [];
+
+  copySelected(): void {
+    const objects = this.canvas.getActiveObjects();
+    if (objects.length === 0) return;
+    this.clipboard = objects.map(obj => obj.toJSON());
+  }
+
+  async pasteClipboard(): Promise<void> {
+    if (this.clipboard.length === 0) return;
+    const offset = 20;
+    const newObjects: FabricObject[] = [];
+
+    for (const json of this.clipboard) {
+      const obj = await (FabricObject as any).fromObject(json, {});
+      (obj as any).id = crypto.randomUUID();
+      obj.set({
+        left: (obj.left ?? 0) + offset,
+        top: (obj.top ?? 0) + offset,
+      });
+      this.canvas.add(obj);
+      newObjects.push(obj);
+    }
+
+    if (newObjects.length > 1) {
+      const activeSelection = new (Canvas as any).ActiveSelection(newObjects, { canvas: this.canvas });
+      this.canvas.setActiveObject(activeSelection);
+    } else if (newObjects.length === 1) {
+      this.canvas.setActiveObject(newObjects[0]);
+    }
+
+    this.canvas.renderAll();
+  }
+
   // --- Canvas dimensions ---
 
   setDimensions(width: number, height: number): void {

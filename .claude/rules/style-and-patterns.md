@@ -43,6 +43,15 @@
 - Lock/unlock: `lockElement()`, `unlockElement()`, `isElementLocked()` — sets `selectable` and `evented` on the Fabric object
 - Export types use `ImageFormat` from `fabric` (`import { type ImageFormat } from 'fabric'`)
 
+## Keyboard Shortcuts
+
+- `KeyboardShortcutsService` (`features/editor/`) listens to `keydown` on `document`, delegates to `CanvasWrapperService` and `HistoryState`
+- Activated by `EditorComponent.ngOnInit()`, deactivated on `ngOnDestroy()`
+- Ignores events when focus is in `<input>`, `<textarea>`, or `contentEditable` elements
+- Shortcuts: Ctrl+Z (undo), Ctrl+Y / Ctrl+Shift+Z (redo), Delete/Backspace (delete selected), Ctrl+C (copy), Ctrl+V (paste), Ctrl+G (group), Ctrl+Shift+G (ungroup), Ctrl+A (select all), Arrow keys (nudge 1px, 10px with Shift)
+- Clipboard state is held in `CanvasWrapperService.clipboard` (serialized JSON of copied objects). Paste offsets by 20px and creates new IDs
+- `CanvasWrapperService` bulk operations: `deleteSelected()`, `selectAll()`, `nudgeSelected(dx, dy)`, `copySelected()`, `pasteClipboard()`
+
 ## Font System
 
 - `FontService` (`core/services/`) manages Google Fonts — fetches font list from `/api/fonts/popular`, loads fonts on demand via Google Fonts CSS `<link>` injection + `document.fonts.load()`, clears Fabric.js `cache.clearFontCache()` after loading, deduplicates concurrent loads

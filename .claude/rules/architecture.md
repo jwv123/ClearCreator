@@ -23,7 +23,9 @@ No build step for `libs/` — the API references them via TypeScript path aliase
 
 3. **Editor sub-components** (`features/editor/components/`) — `TopbarComponent`, `SidebarComponent` (tools only), `CanvasAreaComponent`, `PropertiesPanelComponent`, `LayersPanelComponent`, `AiPanelComponent`, `AssetsPanelComponent`, `FontSelectorComponent`. EditorComponent orchestrates them. The right panel has four tabs: Properties, Layers, AI, Assets. `FontSelectorComponent` is used inside `PropertiesPanelComponent` for font family selection with search and Google Fonts preview. `AssetsPanelComponent` shows uploaded images in a grid with click-to-add-to-canvas.
 
-4. **Infrastructure services** (`core/services/`) — `AuthService` wraps Supabase auth (BehaviorSubject + signals). `AiService` is a pure HTTP/SSE layer with no signals — it returns Observables and accepts AbortSignal. `FontService` fetches Google Fonts via the backend proxy, manages font loading via `document.fonts.load()` and dynamic `<link>` injection, clears Fabric.js `charWidthsCache` after loading, and tracks loaded fonts in a signal. `SupabaseService` is a singleton client wrapper. `UploadService` manages image uploads — two-phase flow (createUpload mutation then upload to Supabase Storage), tracks uploads in a signal, provides deleteUpload and loadUploads.
+4. **Infrastructure services** (`core/services/`) — `AuthService` wraps Supabase auth (BehaviorSubject + signals). `AiService` is a pure HTTP/SSE layer with no signals — it returns Observables and accepts AbortSignal. `FontService` fetches Google Fonts via the backend proxy, manages font loading via `document.fonts.load()` and dynamic `<link>` injection, clears Fabric.js `charWidthsCache` after loading, and tracks loaded fonts in a signal. `SupabaseService` is a singleton client wrapper. `UploadService` manages image uploads — two-phase flow (createUpload mutation then upload to Supabase Storage), tracks uploads in a signal, provides deleteUpload and loadUploads. `KeyboardShortcutsService` listens to `keydown` events on `document`, delegates to CanvasWrapperService and HistoryState, and manages clipboard state for copy/paste. Activated/deactivated by EditorComponent lifecycle.
+
+5. **Keyboard shortcuts** — `KeyboardShortcutsService` (`features/editor/`) handles: Ctrl+Z (undo), Ctrl+Y / Ctrl+Shift+Z (redo), Delete/Backspace (delete selected), Ctrl+C (copy), Ctrl+V (paste), Ctrl+G (group), Ctrl+Shift+G (ungroup), Ctrl+A (select all), Arrow keys (nudge 1px, 10px with Shift). Ignores events when focus is in INPUT/TEXTAREA/contentEditable elements.
 
 ## Dev Proxy
 
@@ -70,6 +72,7 @@ System prompts in `ollama.service.ts` define the JSON schema contract between AI
 | AI service (HTTP/SSE layer) | `apps/web/src/app/core/services/ai.service.ts` |
 | Font service (loading + state) | `apps/web/src/app/core/services/font.service.ts` |
 | Upload service (Supabase Storage) | `apps/web/src/app/core/services/upload.service.ts` |
+| Keyboard shortcuts service | `apps/web/src/app/features/editor/keyboard-shortcuts.service.ts` |
 | Font selector component | `apps/web/src/app/features/editor/components/font-selector/font-selector.component.ts` |
 | Ollama proxy + system prompts | `apps/api/src/services/ollama.service.ts` |
 | Google Fonts proxy | `apps/api/src/services/font.service.ts` |
