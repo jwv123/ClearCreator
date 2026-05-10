@@ -42,11 +42,11 @@
 - [x] Build `FontSelectorComponent` — searchable dropdown with font preview
 - [x] Ensure fonts are loaded before Fabric.js renders text objects
 
-## Phase 7: Image Uploads
-- [ ] Implement `UploadService` — create upload mutation, upload to Supabase Storage, return public URL
-- [ ] Build `AssetsPanelComponent` — grid of user uploads, drag-to-canvas
-- [ ] Handle image dimensions from upload metadata
-- [ ] Wire `FabricImage.fromURL()` for adding uploaded images to canvas
+## Phase 7: Image Uploads ✅
+- [x] Implement `UploadService` — create upload mutation, upload to Supabase Storage, return public URL
+- [x] Build `AssetsPanelComponent` — grid of user uploads, click-to-add-to-canvas
+- [x] Handle image dimensions from upload metadata
+- [x] Wire `FabricImage.fromURL()` for adding uploaded images to canvas
 
 ## Phase 8: Undo/Redo + Keyboard Shortcuts
 - [x] Implement undo/redo in `HistoryState` — wired to canvas events via EditorComponent subscriptions (object:added, object:modified, object:removed, debounced text:changed)

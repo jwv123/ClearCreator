@@ -21,9 +21,9 @@ No build step for `libs/` — the API references them via TypeScript path aliase
 
 2. **State services** (`features/editor/state/`) — lightweight signal bags. `SelectionState` derives from CanvasWrapper. `HistoryState` does undo/redo via `snapshot()/restoreSnapshot()` (50-entry stack, wired to canvas events via debounced subscriptions in EditorComponent). `CanvasState` holds project metadata. `AiState` is the single reactive store for all AI-related state — it holds `models`, `selectedModel`, `isGenerating`, `streamingText`, `generationStatus`, `lastDesign`, `lastError`, `selectedContext` (computed from SelectionState), and orchestrates generate/apply/modify flows.
 
-3. **Editor sub-components** (`features/editor/components/`) — `TopbarComponent`, `SidebarComponent` (tools only), `CanvasAreaComponent`, `PropertiesPanelComponent`, `LayersPanelComponent`, `AiPanelComponent`, `FontSelectorComponent`. EditorComponent orchestrates them. The right panel has three tabs: Properties, Layers, AI. `FontSelectorComponent` is used inside `PropertiesPanelComponent` for font family selection with search and Google Fonts preview.
+3. **Editor sub-components** (`features/editor/components/`) — `TopbarComponent`, `SidebarComponent` (tools only), `CanvasAreaComponent`, `PropertiesPanelComponent`, `LayersPanelComponent`, `AiPanelComponent`, `AssetsPanelComponent`, `FontSelectorComponent`. EditorComponent orchestrates them. The right panel has four tabs: Properties, Layers, AI, Assets. `FontSelectorComponent` is used inside `PropertiesPanelComponent` for font family selection with search and Google Fonts preview. `AssetsPanelComponent` shows uploaded images in a grid with click-to-add-to-canvas.
 
-4. **Infrastructure services** (`core/services/`) — `AuthService` wraps Supabase auth (BehaviorSubject + signals). `AiService` is a pure HTTP/SSE layer with no signals — it returns Observables and accepts AbortSignal. `FontService` fetches Google Fonts via the backend proxy, manages font loading via `document.fonts.load()` and dynamic `<link>` injection, clears Fabric.js `charWidthsCache` after loading, and tracks loaded fonts in a signal. `SupabaseService` is a singleton client wrapper.
+4. **Infrastructure services** (`core/services/`) — `AuthService` wraps Supabase auth (BehaviorSubject + signals). `AiService` is a pure HTTP/SSE layer with no signals — it returns Observables and accepts AbortSignal. `FontService` fetches Google Fonts via the backend proxy, manages font loading via `document.fonts.load()` and dynamic `<link>` injection, clears Fabric.js `charWidthsCache` after loading, and tracks loaded fonts in a signal. `SupabaseService` is a singleton client wrapper. `UploadService` manages image uploads — two-phase flow (createUpload mutation then upload to Supabase Storage), tracks uploads in a signal, provides deleteUpload and loadUploads.
 
 ## Dev Proxy
 
@@ -51,7 +51,7 @@ System prompts in `ollama.service.ts` define the JSON schema contract between AI
 
 - **Auth** (client-side): email/password + Google OAuth via `@supabase/supabase-js`
 - **Data** (server-side): GraphQL resolvers use service-role client, RLS enforces owner access
-- **Storage**: `uploads` bucket is public-read (canvas needs public image URLs), owner-scoped write
+- **Storage**: `uploads` bucket is public-read (canvas needs public image URLs), owner-scoped write. Client uploads directly to Supabase Storage (anon key + RLS), then records metadata via `createUpload` GraphQL mutation
 
 ## Key File Locations
 
@@ -65,9 +65,11 @@ System prompts in `ollama.service.ts` define the JSON schema contract between AI
 | Properties panel | `apps/web/src/app/features/editor/components/properties-panel/properties-panel.component.ts` |
 | Layers panel | `apps/web/src/app/features/editor/components/layers-panel/layers-panel.component.ts` |
 | AI panel | `apps/web/src/app/features/editor/components/ai-panel/ai-panel.component.ts` |
+| Assets panel | `apps/web/src/app/features/editor/components/assets-panel/assets-panel.component.ts` |
 | AI state (reactive store) | `apps/web/src/app/features/editor/state/ai.state.ts` |
 | AI service (HTTP/SSE layer) | `apps/web/src/app/core/services/ai.service.ts` |
 | Font service (loading + state) | `apps/web/src/app/core/services/font.service.ts` |
+| Upload service (Supabase Storage) | `apps/web/src/app/core/services/upload.service.ts` |
 | Font selector component | `apps/web/src/app/features/editor/components/font-selector/font-selector.component.ts` |
 | Ollama proxy + system prompts | `apps/api/src/services/ollama.service.ts` |
 | Google Fonts proxy | `apps/api/src/services/font.service.ts` |

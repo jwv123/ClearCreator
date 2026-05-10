@@ -15,9 +15,10 @@
 - NG-ZORRO v21 tabs use `<nz-tabs>` and `<nz-tab>` (not `nz-tabset`)
 - `nz-button-group` is NOT available as a standalone directive in v21 — use a `<div class="btn-group">` with CSS flexbox instead
 - Editor sub-components live in `features/editor/components/` — each in its own directory with a single `.ts` file
-- EditorComponent is an orchestrator that composes TopbarComponent, SidebarComponent (tools only), CanvasAreaComponent, PropertiesPanelComponent, LayersPanelComponent, AiPanelComponent, and FontSelectorComponent
+- EditorComponent is an orchestrator that composes TopbarComponent, SidebarComponent (tools only), CanvasAreaComponent, PropertiesPanelComponent, LayersPanelComponent, AiPanelComponent, AssetsPanelComponent, and FontSelectorComponent
 - SidebarComponent contains only the tool grid (Text, Rect, Circle, Image). AI generation is in AiPanelComponent
-- AiPanelComponent lives in the right panel as a third tab (Properties | Layers | AI)
+- AiPanelComponent lives in the right panel as a third tab (Properties | Layers | AI | Assets)
+- SidebarComponent's "Image" button switches the right panel to the Assets tab instead of opening a file dialog
 - FontSelectorComponent is used inside PropertiesPanelComponent for font family selection — it provides a searchable dropdown with System Fonts and Google Fonts groups, font preview rendering, and automatic font loading
 
 ## AI State Management
@@ -50,6 +51,15 @@
 - `AiState.modifySelectedElements()` preloads fonts from AI modifications before applying changes
 - `addTextElement()` accepts an optional `fontFamily` parameter (default `'Arial'`)
 - `EditorComponent.ngOnInit()` calls `FontService.loadPopularFonts()` to pre-populate the font list
+
+## Upload System
+
+- `UploadService` (`core/services/`) manages image uploads to Supabase Storage — two-phase flow: (1) call `createUpload` GraphQL mutation to get `storagePath` and metadata, (2) upload file to Supabase Storage at that path, (3) update local signal
+- `UploadService` tracks `uploads`, `isUploading`, `uploadError` as signals
+- `UploadService.getImageDimensions()` uses `Image()` + `URL.createObjectURL` to read `naturalWidth`/`naturalHeight` before upload
+- `AssetsPanelComponent` shows uploaded images in a 3-column grid with click-to-add-to-canvas, hover-reveal delete button, file name and dimensions display
+- The sidebar "Image" tool switches to the Assets tab rather than opening a local file picker
+- `CanvasWrapperService.addImageFromURL()` is used to add uploaded images to canvas (no canvas changes needed)
 
 ## Backend (Node.js)
 

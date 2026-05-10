@@ -17,6 +17,7 @@ import { CanvasAreaComponent } from './components/canvas-area/canvas-area.compon
 import { PropertiesPanelComponent } from './components/properties-panel/properties-panel.component';
 import { LayersPanelComponent } from './components/layers-panel/layers-panel.component';
 import { AiPanelComponent } from './components/ai-panel/ai-panel.component';
+import { AssetsPanelComponent } from './components/assets-panel/assets-panel.component';
 
 @Component({
   selector: 'app-editor',
@@ -24,7 +25,7 @@ import { AiPanelComponent } from './components/ai-panel/ai-panel.component';
   imports: [
     CommonModule, NzLayoutModule, NzTabsModule,
     TopbarComponent, SidebarComponent, CanvasAreaComponent,
-    PropertiesPanelComponent, LayersPanelComponent, AiPanelComponent,
+    PropertiesPanelComponent, LayersPanelComponent, AiPanelComponent, AssetsPanelComponent,
   ],
   template: `
     <nz-layout class="editor-layout">
@@ -67,6 +68,9 @@ import { AiPanelComponent } from './components/ai-panel/ai-panel.component';
             </nz-tab>
             <nz-tab nzTitle="AI">
               <app-ai-panel />
+            </nz-tab>
+            <nz-tab nzTitle="Assets">
+              <app-assets-panel />
             </nz-tab>
           </nz-tabs>
         </nz-sider>
@@ -174,14 +178,7 @@ export class EditorComponent implements OnInit, OnDestroy {
   }
 
   addImage(): void {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = (event) => {
-      const file = (event.target as HTMLInputElement).files?.[0];
-      if (file) this.canvasWrapper.addImageFromFile(file);
-    };
-    input.click();
+    this.rightPanelIndex = 3;
   }
 
   undo(): void {

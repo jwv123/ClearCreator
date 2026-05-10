@@ -165,6 +165,8 @@ export const resolvers = {
           content_type: input.contentType,
           storage_path: storagePath,
           public_url: `${process.env.SUPABASE_URL}/storage/v1/object/public/uploads/${storagePath}`,
+          width: input.width || null,
+          height: input.height || null,
         })
         .select()
         .single();

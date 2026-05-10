@@ -54,6 +54,7 @@ export const schema = `#graphql
     fileName: String!
     fileSize: Int!
     contentType: String!
+    storagePath: String!
     publicUrl: String!
     width: Int
     height: Int
@@ -117,6 +118,8 @@ export const schema = `#graphql
     fileName: String!
     contentType: String!
     fileSize: Int!
+    width: Int
+    height: Int
   }
 
   # === Queries ===

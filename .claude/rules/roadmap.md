@@ -1,6 +1,6 @@
 # Roadmap
 
-See [TODO.md](../../TODO.md) for the full phased checklist. Phases 1–4 are complete.
+See [TODO.md](../../TODO.md) for the full phased checklist. Phases 1–7 are complete.
 
 Phase summary:
 1. ✅ Scaffolding — project structure, dependencies, migrations
@@ -9,7 +9,7 @@ Phase summary:
 4. ✅ Canvas core — Fabric.js wrapper, editor layout, properties/layers panels
 5. ✅ AI integration — streaming generation, apply-to-canvas, model selector, modify elements, AiPanelComponent, AiState reactive store
 6. ✅ Font system — Google Fonts API proxy, FontService with on-demand loading, FontSelectorComponent with search and preview, AI design font preloading
-7. Image uploads — Supabase Storage direct upload, assets panel
+7. ✅ Image uploads — UploadService, Supabase Storage direct upload, AssetsPanelComponent with click-to-add, image dimensions, FabricImage integration
 8. Undo/redo + keyboard shortcuts
 9. Export — PNG/JPG client-side, PDF backend endpoint
 10. Polish — auto-save, thumbnails, lazy loading, performance
