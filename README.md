@@ -31,7 +31,7 @@ clearcreator/
   apps/
     web/                  # Angular 21 frontend
       src/app/
-        core/             # Services (auth, AI, Supabase), guards, models
+        core/             # Services (auth, AI, fonts, Supabase), guards, models
         features/
           auth/           # Login, register, OAuth callback (Supabase auth)
           dashboard/      # Project list, template gallery
@@ -40,7 +40,7 @@ clearcreator/
     api/                  # Express + Apollo GraphQL backend
       src/
         graphql/          # Schema and resolvers
-        services/         # Ollama proxy, AI prompt builder
+        services/         # Ollama proxy, AI prompt builder, Google Fonts proxy
         middleware/       # Auth, error, rate-limit
   libs/
     shared-types/         # Shared TypeScript interfaces
@@ -106,7 +106,7 @@ The editor uses strict separation — **only `CanvasWrapperService` touches Fabr
 
 - **CanvasWrapperService** — owns the Fabric.js `Canvas` instance, bridges to Angular signals and RxJS Subjects
 - **State services** — `CanvasState`, `SelectionState`, `HistoryState`, `AiState` hold reactive state
-- **Infrastructure services** — `AuthService`, `AiService`, `SupabaseService` handle external I/O
+- **Infrastructure services** — `AuthService`, `AiService`, `FontService`, `SupabaseService` handle external I/O
 
 No component imports from `fabric` directly. All canvas operations go through the service.
 
@@ -126,6 +126,8 @@ User prompt → AiService (SSE) → Express /api/ai/generate/stream
 Frontend (Angular)  ←→  GraphQL API (Express)  ←→  Supabase (Postgres + Auth + Storage)
                          ↕
                     Ollama Cloud (AI generation)
+                         ↕
+                    Google Fonts API (font catalog)
 ```
 
 ## Development Commands
@@ -145,9 +147,9 @@ Frontend (Angular)  ←→  GraphQL API (Express)  ←→  Supabase (Postgres + 
 | 1 | ✅ | Scaffolding — project structure, dependencies, migrations |
 | 2 | ✅ | Auth — Supabase auth, Apollo with auth headers, OAuth callback |
 | 3 | ✅ | Dashboard — ProjectService, project cards, template gallery |
-| 4 | 🔲 | Canvas core — Fabric.js wrapper, editor layout, properties/layers |
-| 5 | 🔲 | AI integration — streaming generation, apply-to-canvas, model selector |
-| 6 | 🔲 | Font system — Google Fonts, font selector |
+| 4 | ✅ | Canvas core — Fabric.js wrapper, editor layout, properties/layers |
+| 5 | ✅ | AI integration — streaming generation, apply-to-canvas, model selector |
+| 6 | ✅ | Font system — Google Fonts proxy, FontService, font selector with preview |
 | 7 | 🔲 | Image uploads — Supabase Storage, assets panel, drag-to-canvas |
 | 8 | 🔲 | Undo/redo + keyboard shortcuts |
 | 9 | 🔲 | Export — PNG/JPG/PDF, auto-save, thumbnails |
