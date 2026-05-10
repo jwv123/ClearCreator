@@ -40,7 +40,7 @@ clearcreator/
     api/                  # Express + Apollo GraphQL backend
       src/
         graphql/          # Schema and resolvers
-        services/         # Ollama proxy, AI prompt builder, Google Fonts proxy
+        services/         # Ollama proxy, AI prompt builder, Google Fonts proxy, PDF export
         middleware/       # Auth, error, rate-limit
   libs/
     shared-types/         # Shared TypeScript interfaces
@@ -106,7 +106,7 @@ The editor uses strict separation — **only `CanvasWrapperService` touches Fabr
 
 - **CanvasWrapperService** — owns the Fabric.js `Canvas` instance, bridges to Angular signals and RxJS Subjects
 - **State services** — `CanvasState`, `SelectionState`, `HistoryState`, `AiState` hold reactive state
-- **Infrastructure services** — `AuthService`, `AiService`, `FontService`, `SupabaseService` handle external I/O
+- **Infrastructure services** — `AuthService`, `AiService`, `FontService`, `SupabaseService`, `ThumbnailService`, `ProjectService` handle external I/O
 
 No component imports from `fabric` directly. All canvas operations go through the service.
 
@@ -128,6 +128,10 @@ Frontend (Angular)  ←→  GraphQL API (Express)  ←→  Supabase (Postgres + 
                     Ollama Cloud (AI generation)
                          ↕
                     Google Fonts API (font catalog)
+
+Export flow:  Canvas → toDataURL (PNG/JPG client-side)  →  browser download
+              Canvas → toDataURL → POST /api/export/pdf  →  pdfmake  →  PDF download
+Auto-save:    Canvas changes → 5s debounce → updateProject mutation + thumbnail upload
 ```
 
 ## Development Commands
@@ -150,9 +154,9 @@ Frontend (Angular)  ←→  GraphQL API (Express)  ←→  Supabase (Postgres + 
 | 4 | ✅ | Canvas core — Fabric.js wrapper, editor layout, properties/layers |
 | 5 | ✅ | AI integration — streaming generation, apply-to-canvas, model selector |
 | 6 | ✅ | Font system — Google Fonts proxy, FontService, font selector with preview |
-| 7 | 🔲 | Image uploads — Supabase Storage, assets panel, drag-to-canvas |
-| 8 | 🔲 | Undo/redo + keyboard shortcuts |
-| 9 | 🔲 | Export — PNG/JPG/PDF, auto-save, thumbnails |
+| 7 | ✅ | Image uploads — Supabase Storage, assets panel, drag-to-canvas |
+| 8 | ✅ | Undo/redo + keyboard shortcuts |
+| 9 | ✅ | Export — PNG/JPG/PDF, auto-save, thumbnails |
 | 10 | 🔲 | Polish — lazy loading, virtual scroll, mobile responsive |
 
 See [TODO.md](./TODO.md) for detailed task breakdowns.
