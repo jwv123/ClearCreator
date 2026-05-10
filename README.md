@@ -157,7 +157,7 @@ Auto-save:    Canvas changes → 5s debounce → updateProject mutation + thumbn
 | 7 | ✅ | Image uploads — Supabase Storage, assets panel, drag-to-canvas |
 | 8 | ✅ | Undo/redo + keyboard shortcuts |
 | 9 | ✅ | Export — PNG/JPG/PDF, auto-save, thumbnails |
-| 10 | 🔲 | Polish — lazy loading, virtual scroll, mobile responsive |
+| 10 | ✅ | Polish — lazy loading, virtual scroll, mobile responsive |
 
 See [TODO.md](./TODO.md) for detailed task breakdowns.
 

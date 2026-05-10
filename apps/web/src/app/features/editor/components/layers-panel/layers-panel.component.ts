@@ -1,13 +1,13 @@
-import { Component, inject, OnDestroy, ChangeDetectionStrategy, signal, computed } from '@angular/core';
+import { Component, inject, OnDestroy, ChangeDetectionStrategy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subject, takeUntil } from 'rxjs';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
+import { ScrollingModule } from '@angular/cdk/scrolling';
 import { CanvasWrapperService } from '../../canvas/canvas-wrapper.service';
 import { SelectionState } from '../../state/selection.state';
-import { FabricObject } from 'fabric';
 
 interface LayerItem {
   id: string;
@@ -21,18 +21,17 @@ interface LayerItem {
 @Component({
   selector: 'app-layers-panel',
   standalone: true,
-  imports: [CommonModule, NzButtonModule, NzIconModule, NzTooltipModule, NzEmptyModule],
+  imports: [CommonModule, NzButtonModule, NzIconModule, NzTooltipModule, NzEmptyModule, ScrollingModule],
   template: `
     <div class="layers-content">
       @if (layers().length === 0) {
         <nz-empty nzDescription="No elements" nzNotFoundImage="simple"></nz-empty>
       } @else {
-        @for (layer of layers(); track layer.id; let i = $index) {
-          <div
-            class="layer-item"
-            [class.selected]="layer.selected"
-            (click)="selectLayer(layer.id)"
-          >
+        <cdk-virtual-scroll-viewport itemSize="36" class="layers-viewport">
+          <div *cdkVirtualFor="let layer of layers(); let i = index"
+               class="layer-item"
+               [class.selected]="layer.selected"
+               (click)="selectLayer(layer.id)">
             <span class="layer-icon" [ngSwitch]="layer.type">
               <span nz-icon nzType="font-size" *ngSwitchCase="'textbox'"></span>
               <span nz-icon nzType="border" *ngSwitchCase="'rect'"></span>
@@ -56,12 +55,13 @@ interface LayerItem {
               </button>
             </div>
           </div>
-        }
+        </cdk-virtual-scroll-viewport>
       }
     </div>
   `,
   styles: [`
-    .layers-content { padding: 8px 0; }
+    .layers-content { padding: 8px 0; height: 100%; display: flex; flex-direction: column; }
+    .layers-viewport { flex: 1; }
     .layer-item {
       display: flex;
       align-items: center;
@@ -69,6 +69,8 @@ interface LayerItem {
       cursor: pointer;
       border-bottom: 1px solid #f0f0f0;
       transition: background 0.15s;
+      height: 36px;
+      box-sizing: border-box;
     }
     .layer-item:hover { background: #f5f5f5; }
     .layer-item.selected { background: #e6f7ff; border-left: 3px solid #1890ff; }

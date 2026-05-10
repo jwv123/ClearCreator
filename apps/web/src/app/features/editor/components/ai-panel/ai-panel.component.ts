@@ -26,17 +26,21 @@ import { AiState } from '../../state/ai.state';
       <!-- Model Selector -->
       <div class="prop-group">
         <label>Model</label>
-        <nz-select
-          [ngModel]="aiState.selectedModel()"
-          (ngModelChange)="aiState.setModel($event)"
-          nzSize="small"
-          class="full-width"
-          nzPlaceHolder="Select model"
-        >
-          @for (model of aiState.models(); track model.name) {
-            <nz-option [nzValue]="model.name" [nzLabel]="model.name"></nz-option>
-          }
-        </nz-select>
+        @if (aiState.models().length === 0) {
+          <nz-spin nzSimple nzSize="small"></nz-spin>
+        } @else {
+          <nz-select
+            [ngModel]="aiState.selectedModel()"
+            (ngModelChange)="aiState.setModel($event)"
+            nzSize="small"
+            class="full-width"
+            nzPlaceHolder="Select model"
+          >
+            @for (model of aiState.models(); track model.name) {
+              <nz-option [nzValue]="model.name" [nzLabel]="model.name"></nz-option>
+            }
+          </nz-select>
+        }
       </div>
 
       <!-- Prompt Input -->

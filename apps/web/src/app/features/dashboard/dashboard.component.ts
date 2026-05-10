@@ -39,7 +39,7 @@ import { TemplateGalleryComponent } from './template-gallery/template-gallery.co
         } @else {
           <div nz-row [nzGutter]="[16, 16]">
             @for (project of projects(); track project.id) {
-              <div nz-col [nzSpan]="6">
+              <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8" [nzLg]="6">
                 <app-project-card
                   [project]="project"
                   (clicked)="openProject($event)"
@@ -62,9 +62,13 @@ import { TemplateGalleryComponent } from './template-gallery/template-gallery.co
   `,
   styles: [`
     .dashboard-container { padding: 24px; max-width: 1400px; margin: 0 auto; }
-    .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+    .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; flex-wrap: wrap; gap: 12px; }
     .header-actions { display: flex; gap: 12px; }
     .dashboard-section { margin-bottom: 40px; }
+    @media (max-width: 576px) {
+      .dashboard-container { padding: 16px; }
+      .dashboard-header { margin-bottom: 24px; }
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

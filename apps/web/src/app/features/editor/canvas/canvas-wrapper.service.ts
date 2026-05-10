@@ -1,5 +1,4 @@
 import { Injectable, signal, WritableSignal } from '@angular/core';
-import { Canvas, FabricObject, FabricImage, Rect, Circle, Textbox, PencilBrush, type ImageFormat } from 'fabric';
 import { Subject } from 'rxjs';
 
 export interface ObjectModifiedEvent {
@@ -43,10 +42,16 @@ export interface ElementProperties {
   radius?: number;
 }
 
+type ImageFormat = 'png' | 'jpeg';
+
 @Injectable({ providedIn: 'root' })
 export class CanvasWrapperService {
-  private canvas!: Canvas;
+  private fabric: typeof import('fabric') | null = null;
+  private canvas: import('fabric').Canvas | null = null;
   private initialized = false;
+
+  /** Signal that becomes true once Fabric.js is loaded and the canvas is initialized */
+  readonly isReady = signal(false);
 
   // Reactive state
   selectedObjectIds: WritableSignal<string[]> = signal<string[]>([]);
@@ -60,10 +65,13 @@ export class CanvasWrapperService {
   onTextChanged$ = new Subject<{ id: string; text: string }>();
   onObjectsReordered$ = new Subject<void>();
 
-  init(canvasEl: HTMLCanvasElement, width: number, height: number): Canvas {
+  async init(canvasEl: HTMLCanvasElement, width: number, height: number): Promise<void> {
     if (this.initialized) {
       this.dispose();
     }
+
+    this.fabric = await import('fabric');
+    const { Canvas } = this.fabric;
 
     this.canvas = new Canvas(canvasEl, {
       width,
@@ -75,25 +83,40 @@ export class CanvasWrapperService {
 
     this.setupEventListeners();
     this.initialized = true;
-    return this.canvas;
+    this.isReady.set(true);
   }
 
   dispose(): void {
-    if (!this.initialized) return;
+    if (!this.initialized || !this.canvas) return;
     this.canvas.dispose();
+    this.canvas = null;
     this.initialized = false;
+    this.isReady.set(false);
+  }
+
+  private f(): typeof import('fabric') {
+    if (!this.fabric) throw new Error('CanvasWrapperService: Fabric.js not loaded. Call init() first.');
+    return this.fabric;
+  }
+
+  private c(): import('fabric').Canvas {
+    if (!this.canvas) throw new Error('CanvasWrapperService: Canvas not initialized. Call init() first.');
+    return this.canvas;
   }
 
   private setupEventListeners(): void {
-    this.canvas.on('selection:created', (e) => this.handleSelectionChange(e));
-    this.canvas.on('selection:updated', (e) => this.handleSelectionChange(e));
-    this.canvas.on('selection:cleared', () => {
+    const canvas = this.c();
+    const { Textbox } = this.f();
+
+    canvas.on('selection:created', (e) => this.handleSelectionChange(e));
+    canvas.on('selection:updated', (e) => this.handleSelectionChange(e));
+    canvas.on('selection:cleared', () => {
       this.selectedObjectIds.set([]);
       this.selectedObjectType.set('none');
       this.onSelectionChanged$.next({ selectedIds: [], selectedType: 'none' });
     });
 
-    this.canvas.on('object:modified', (e) => {
+    canvas.on('object:modified', (e) => {
       const obj = e.target;
       if (obj) {
         this.onObjectModified$.next({
@@ -104,22 +127,22 @@ export class CanvasWrapperService {
       }
     });
 
-    this.canvas.on('object:added', (e) => {
+    canvas.on('object:added', (e) => {
       const obj = e.target;
       if (obj) {
         this.onObjectAdded$.next({ id: (obj as any).id || '', type: obj.type || '' });
       }
     });
 
-    this.canvas.on('object:removed', (e) => {
+    canvas.on('object:removed', (e) => {
       const obj = e.target;
       if (obj) {
         this.onObjectRemoved$.next({ id: (obj as any).id || '' });
       }
     });
 
-    this.canvas.on('text:changed', (e) => {
-      const obj = e.target as Textbox;
+    canvas.on('text:changed', (e) => {
+      const obj = e.target as InstanceType<typeof Textbox>;
       if (obj) {
         this.onTextChanged$.next({ id: (obj as any).id || '', text: obj.text || '' });
       }
@@ -127,7 +150,8 @@ export class CanvasWrapperService {
   }
 
   private handleSelectionChange(e: any): void {
-    const selected = this.canvas.getActiveObjects();
+    const canvas = this.c();
+    const selected = canvas.getActiveObjects();
     const ids = selected.map(obj => (obj as any).id || '');
     const types = selected.map(obj => obj.type || '');
 
@@ -139,6 +163,8 @@ export class CanvasWrapperService {
   // --- Element Operations ---
 
   addTextElement(text = 'Double-click to edit', fontFamily = 'Arial'): void {
+    const { Textbox } = this.f();
+    const canvas = this.c();
     const textObj = new Textbox(text, {
       left: 100,
       top: 100,
@@ -148,12 +174,14 @@ export class CanvasWrapperService {
       fill: '#000000',
     });
     (textObj as any).id = crypto.randomUUID();
-    this.canvas.add(textObj);
-    this.canvas.setActiveObject(textObj);
-    this.canvas.renderAll();
+    canvas.add(textObj);
+    canvas.setActiveObject(textObj);
+    canvas.renderAll();
   }
 
   addRectElement(): void {
+    const { Rect } = this.f();
+    const canvas = this.c();
     const rect = new Rect({
       left: 100,
       top: 100,
@@ -164,12 +192,14 @@ export class CanvasWrapperService {
       strokeWidth: 2,
     });
     (rect as any).id = crypto.randomUUID();
-    this.canvas.add(rect);
-    this.canvas.setActiveObject(rect);
-    this.canvas.renderAll();
+    canvas.add(rect);
+    canvas.setActiveObject(rect);
+    canvas.renderAll();
   }
 
   addCircleElement(): void {
+    const { Circle } = this.f();
+    const canvas = this.c();
     const circle = new Circle({
       left: 150,
       top: 150,
@@ -179,14 +209,16 @@ export class CanvasWrapperService {
       strokeWidth: 2,
     });
     (circle as any).id = crypto.randomUUID();
-    this.canvas.add(circle);
-    this.canvas.setActiveObject(circle);
-    this.canvas.renderAll();
+    canvas.add(circle);
+    canvas.setActiveObject(circle);
+    canvas.renderAll();
   }
 
   async addImageFromURL(url: string): Promise<void> {
+    const { FabricImage } = this.f();
+    const canvas = this.c();
     const img = await FabricImage.fromURL(url);
-    const maxDim = Math.min(this.canvas.getWidth(), this.canvas.getHeight()) * 0.5;
+    const maxDim = Math.min(canvas.getWidth(), canvas.getHeight()) * 0.5;
     const scale = Math.min(maxDim / (img.width || 1), maxDim / (img.height || 1));
     img.set({
       left: 100,
@@ -195,9 +227,9 @@ export class CanvasWrapperService {
       scaleY: scale,
     });
     (img as any).id = crypto.randomUUID();
-    this.canvas.add(img);
-    this.canvas.setActiveObject(img);
-    this.canvas.renderAll();
+    canvas.add(img);
+    canvas.setActiveObject(img);
+    canvas.renderAll();
   }
 
   async addImageFromFile(file: File): Promise<void> {
@@ -212,58 +244,64 @@ export class CanvasWrapperService {
   }
 
   removeElement(id: string): void {
+    const canvas = this.c();
     const obj = this.getElementById(id);
     if (obj) {
-      this.canvas.remove(obj);
-      this.canvas.renderAll();
+      canvas.remove(obj);
+      canvas.renderAll();
     }
   }
 
   updateElement(id: string, changes: Record<string, unknown>): void {
+    const canvas = this.c();
     const obj = this.getElementById(id);
     if (obj) {
       obj.set(changes);
       obj.setCoords();
-      this.canvas.renderAll();
+      canvas.renderAll();
     }
   }
 
-  private getElementById(id: string): FabricObject | undefined {
-    return this.canvas.getObjects().find(obj => (obj as any).id === id);
+  private getElementById(id: string): import('fabric').FabricObject | undefined {
+    return this.c().getObjects().find(obj => (obj as any).id === id);
   }
 
   // --- Selection ---
 
-  getActiveObject(): FabricObject | undefined {
-    return this.canvas.getActiveObject();
+  getActiveObject(): import('fabric').FabricObject | undefined {
+    return this.c().getActiveObject();
   }
 
-  getActiveObjects(): FabricObject[] {
-    return this.canvas.getActiveObjects();
+  getActiveObjects(): import('fabric').FabricObject[] {
+    return this.c().getActiveObjects();
   }
 
   deselectAll(): void {
-    this.canvas.discardActiveObject();
-    this.canvas.renderAll();
+    const canvas = this.c();
+    canvas.discardActiveObject();
+    canvas.renderAll();
   }
 
   selectById(id: string): void {
+    const canvas = this.c();
     const obj = this.getElementById(id);
     if (obj) {
-      this.canvas.setActiveObject(obj);
-      this.canvas.renderAll();
+      canvas.setActiveObject(obj);
+      canvas.renderAll();
     }
   }
 
   // --- Element Properties ---
 
-  getObjects(): FabricObject[] {
-    return this.canvas.getObjects();
+  getObjects(): import('fabric').FabricObject[] {
+    return this.c().getObjects();
   }
 
   getElementProperties(id: string): ElementProperties | null {
     const obj = this.getElementById(id);
     if (!obj) return null;
+
+    const { Textbox, Rect, Circle } = this.f();
 
     const props: ElementProperties = {
       id,
@@ -308,37 +346,41 @@ export class CanvasWrapperService {
   // --- Layer Ordering ---
 
   bringForward(id: string): void {
+    const canvas = this.c();
     const obj = this.getElementById(id);
     if (obj) {
-      this.canvas.bringObjectForward(obj);
-      this.canvas.renderAll();
+      canvas.bringObjectForward(obj);
+      canvas.renderAll();
       this.onObjectsReordered$.next();
     }
   }
 
   sendBackward(id: string): void {
+    const canvas = this.c();
     const obj = this.getElementById(id);
     if (obj) {
-      this.canvas.sendObjectBackwards(obj);
-      this.canvas.renderAll();
+      canvas.sendObjectBackwards(obj);
+      canvas.renderAll();
       this.onObjectsReordered$.next();
     }
   }
 
   bringToFront(id: string): void {
+    const canvas = this.c();
     const obj = this.getElementById(id);
     if (obj) {
-      this.canvas.bringObjectToFront(obj);
-      this.canvas.renderAll();
+      canvas.bringObjectToFront(obj);
+      canvas.renderAll();
       this.onObjectsReordered$.next();
     }
   }
 
   sendToBack(id: string): void {
+    const canvas = this.c();
     const obj = this.getElementById(id);
     if (obj) {
-      this.canvas.sendObjectToBack(obj);
-      this.canvas.renderAll();
+      canvas.sendObjectToBack(obj);
+      canvas.renderAll();
       this.onObjectsReordered$.next();
     }
   }
@@ -346,10 +388,11 @@ export class CanvasWrapperService {
   // --- Visibility & Locking ---
 
   toggleVisibility(id: string): void {
+    const canvas = this.c();
     const obj = this.getElementById(id);
     if (obj) {
       obj.set('visible', !obj.visible);
-      this.canvas.renderAll();
+      canvas.renderAll();
     }
   }
 
@@ -359,18 +402,20 @@ export class CanvasWrapperService {
   }
 
   lockElement(id: string): void {
+    const canvas = this.c();
     const obj = this.getElementById(id);
     if (obj) {
       obj.set({ selectable: false, evented: false } as any);
-      this.canvas.renderAll();
+      canvas.renderAll();
     }
   }
 
   unlockElement(id: string): void {
+    const canvas = this.c();
     const obj = this.getElementById(id);
     if (obj) {
       obj.set({ selectable: true, evented: true } as any);
-      this.canvas.renderAll();
+      canvas.renderAll();
     }
   }
 
@@ -382,76 +427,80 @@ export class CanvasWrapperService {
   // --- Duplicate ---
 
   duplicateElement(id: string): void {
+    const canvas = this.c();
     const obj = this.getElementById(id);
     if (!obj) return;
 
-    obj.clone().then((cloned: FabricObject) => {
+    obj.clone().then((cloned: import('fabric').FabricObject) => {
       (cloned as any).id = crypto.randomUUID();
       cloned.set({
         left: (obj.left ?? 0) + 20,
         top: (obj.top ?? 0) + 20,
       });
-      this.canvas.add(cloned);
-      this.canvas.setActiveObject(cloned);
-      this.canvas.renderAll();
+      canvas.add(cloned);
+      canvas.setActiveObject(cloned);
+      canvas.renderAll();
     });
   }
 
   // --- Group / Ungroup ---
 
   groupSelected(): void {
-    const activeObject = this.canvas.getActiveObject();
+    const canvas = this.c();
+    const activeObject = canvas.getActiveObject();
     if (!activeObject) return;
 
-    // Check if it's already an ActiveSelection with multiple objects
     if (activeObject.type === 'activeselection') {
       const group = (activeObject as any).toGroup();
       (group as any).id = crypto.randomUUID();
-      this.canvas.renderAll();
-      this.canvas.setActiveObject(group);
+      canvas.renderAll();
+      canvas.setActiveObject(group);
     }
   }
 
   ungroupSelected(): void {
-    const activeObject = this.canvas.getActiveObject();
+    const canvas = this.c();
+    const activeObject = canvas.getActiveObject();
     if (!activeObject || activeObject.type !== 'group') return;
 
     const items = (activeObject as any).removeAll();
-    this.canvas.remove(activeObject);
+    canvas.remove(activeObject);
 
     for (const item of items) {
       (item as any).id = (item as any).id || crypto.randomUUID();
-      this.canvas.add(item);
+      canvas.add(item);
     }
-    this.canvas.renderAll();
+    canvas.renderAll();
   }
 
   // --- Canvas Background ---
 
   setBackgroundColor(color: string): void {
-    this.canvas.set('backgroundColor', color);
-    this.canvas.renderAll();
+    const canvas = this.c();
+    canvas.set('backgroundColor', color);
+    canvas.renderAll();
   }
 
   getBackgroundColor(): string {
-    return (this.canvas as any).backgroundColor as string || '#ffffff';
+    return (this.c() as any).backgroundColor as string || '#ffffff';
   }
 
   // --- Serialization ---
 
   toJSON(): object {
-    return this.canvas.toJSON();
+    return this.c().toJSON();
   }
 
   async loadFromJSON(json: object): Promise<void> {
-    await this.canvas.loadFromJSON(json);
-    this.canvas.renderAll();
+    const canvas = this.c();
+    await canvas.loadFromJSON(json);
+    canvas.renderAll();
   }
 
   // --- Export ---
 
   toDataURL(options: { format?: ImageFormat; quality?: number; multiplier?: number } = {}): string {
-    return this.canvas.toDataURL({
+    return this.c().toDataURL({
       format: options.format || 'png',
       quality: options.quality || 1,
       multiplier: options.multiplier || 1,
@@ -461,80 +510,88 @@ export class CanvasWrapperService {
   // --- History ---
 
   snapshot(): object {
-    return this.canvas.toJSON();
+    return this.c().toJSON();
   }
 
   async restoreSnapshot(snapshot: object): Promise<void> {
-    await this.canvas.loadFromJSON(snapshot);
-    this.canvas.renderAll();
+    const canvas = this.c();
+    await canvas.loadFromJSON(snapshot);
+    canvas.renderAll();
   }
 
   // --- Zoom ---
 
   zoomIn(): void {
-    const current = this.canvas.getZoom();
-    this.canvas.setZoom(current * 1.1);
-    this.canvas.renderAll();
+    const canvas = this.c();
+    const current = canvas.getZoom();
+    canvas.setZoom(current * 1.1);
+    canvas.renderAll();
   }
 
   zoomOut(): void {
-    const current = this.canvas.getZoom();
-    this.canvas.setZoom(current / 1.1);
-    this.canvas.renderAll();
+    const canvas = this.c();
+    const current = canvas.getZoom();
+    canvas.setZoom(current / 1.1);
+    canvas.renderAll();
   }
 
   setZoom(level: number): void {
-    this.canvas.setZoom(level);
-    this.canvas.renderAll();
+    const canvas = this.c();
+    canvas.setZoom(level);
+    canvas.renderAll();
   }
 
   getZoom(): number {
-    return this.canvas.getZoom();
+    return this.c().getZoom();
   }
 
   fitToScreen(containerWidth?: number, containerHeight?: number): void {
+    const canvas = this.c();
     if (!containerWidth || !containerHeight) {
-      this.canvas.setZoom(1);
-      this.canvas.renderAll();
+      canvas.setZoom(1);
+      canvas.renderAll();
       return;
     }
 
-    const canvasWidth = this.canvas.getWidth();
-    const canvasHeight = this.canvas.getHeight();
+    const canvasWidth = canvas.getWidth();
+    const canvasHeight = canvas.getHeight();
     const padding = 40;
     const availWidth = containerWidth - padding * 2;
     const availHeight = containerHeight - padding * 2;
 
     const scale = Math.min(availWidth / canvasWidth, availHeight / canvasHeight, 1);
-    this.canvas.setZoom(scale);
+    canvas.setZoom(scale);
 
-    // Center the canvas viewport
-    const vpt = this.canvas.viewportTransform!;
+    const vpt = canvas.viewportTransform!;
     vpt[4] = (containerWidth - canvasWidth * scale) / 2;
     vpt[5] = (containerHeight - canvasHeight * scale) / 2;
-    this.canvas.renderAll();
+    canvas.renderAll();
   }
 
   // --- Bulk operations for keyboard shortcuts ---
 
   deleteSelected(): void {
-    const objects = this.canvas.getActiveObjects();
+    const canvas = this.c();
+    const objects = canvas.getActiveObjects();
     if (objects.length === 0) return;
-    this.canvas.discardActiveObject();
-    objects.forEach(obj => this.canvas.remove(obj));
-    this.canvas.renderAll();
+    canvas.discardActiveObject();
+    objects.forEach(obj => canvas.remove(obj));
+    canvas.renderAll();
   }
 
   selectAll(): void {
-    const objects = this.canvas.getObjects();
+    const canvas = this.c();
+    const { Canvas } = this.f();
+    const objects = canvas.getObjects();
     if (objects.length === 0) return;
-    const activeSelection = new (Canvas as any).ActiveSelection(objects, { canvas: this.canvas });
-    this.canvas.setActiveObject(activeSelection);
-    this.canvas.renderAll();
+    const activeSelection = new (Canvas as any).ActiveSelection(objects, { canvas });
+    canvas.setActiveObject(activeSelection);
+    canvas.renderAll();
   }
 
   nudgeSelected(dx: number, dy: number): void {
-    const objects = this.canvas.getActiveObjects();
+    const canvas = this.c();
+    const objects = canvas.getActiveObjects();
     if (objects.length === 0) return;
     objects.forEach(obj => {
       obj.set({
@@ -543,7 +600,7 @@ export class CanvasWrapperService {
       });
       obj.setCoords();
     });
-    this.canvas.renderAll();
+    canvas.renderAll();
     this.onObjectModified$.next({
       id: objects.length === 1 ? (objects[0] as any).id || '' : '',
       type: objects.length === 1 ? objects[0].type || '' : 'multiple',
@@ -556,15 +613,17 @@ export class CanvasWrapperService {
   private clipboard: object[] = [];
 
   copySelected(): void {
-    const objects = this.canvas.getActiveObjects();
+    const objects = this.c().getActiveObjects();
     if (objects.length === 0) return;
     this.clipboard = objects.map(obj => obj.toJSON());
   }
 
   async pasteClipboard(): Promise<void> {
     if (this.clipboard.length === 0) return;
+    const { FabricObject, Canvas } = this.f();
+    const canvas = this.c();
     const offset = 20;
-    const newObjects: FabricObject[] = [];
+    const newObjects: import('fabric').FabricObject[] = [];
 
     for (const json of this.clipboard) {
       const obj = await (FabricObject as any).fromObject(json, {});
@@ -573,36 +632,37 @@ export class CanvasWrapperService {
         left: (obj.left ?? 0) + offset,
         top: (obj.top ?? 0) + offset,
       });
-      this.canvas.add(obj);
+      canvas.add(obj);
       newObjects.push(obj);
     }
 
     if (newObjects.length > 1) {
-      const activeSelection = new (Canvas as any).ActiveSelection(newObjects, { canvas: this.canvas });
-      this.canvas.setActiveObject(activeSelection);
+      const activeSelection = new (Canvas as any).ActiveSelection(newObjects, { canvas });
+      canvas.setActiveObject(activeSelection);
     } else if (newObjects.length === 1) {
-      this.canvas.setActiveObject(newObjects[0]);
+      canvas.setActiveObject(newObjects[0]);
     }
 
-    this.canvas.renderAll();
+    canvas.renderAll();
   }
 
   // --- Canvas dimensions ---
 
   setDimensions(width: number, height: number): void {
-    this.canvas.setDimensions({ width, height });
-    this.canvas.renderAll();
+    const canvas = this.c();
+    canvas.setDimensions({ width, height });
+    canvas.renderAll();
   }
 
   getCanvasWidth(): number {
-    return this.canvas.getWidth();
+    return this.c().getWidth();
   }
 
   getCanvasHeight(): number {
-    return this.canvas.getHeight();
+    return this.c().getHeight();
   }
 
-  getCanvas(): Canvas {
-    return this.canvas;
+  getCanvas(): import('fabric').Canvas {
+    return this.c();
   }
 }

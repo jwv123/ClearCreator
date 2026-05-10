@@ -1,7 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { signal } from '@angular/core';
-import { cache } from 'fabric';
 
 export interface FontInfo {
   family: string;
@@ -126,6 +125,7 @@ export class FontService {
     try {
       await document.fonts.load(`400 16px "${fontFamily}"`);
       await document.fonts.load(`700 16px "${fontFamily}"`);
+      const { cache } = await import('fabric');
       cache.clearFontCache(fontFamily);
       this.loadedFonts.update((set) => new Set(set).add(fontFamily));
     } catch {

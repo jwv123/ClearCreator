@@ -100,6 +100,11 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
       border-radius: 50%;
       background: #faad14;
     }
+    @media (max-width: 768px) {
+      .project-name-input { width: 120px; font-size: 14px; }
+      .save-status { display: none; }
+      .topbar-center { gap: 4px; }
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

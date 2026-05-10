@@ -1,7 +1,7 @@
 import { Component, inject, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, takeUntil, debounceTime } from 'rxjs';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
@@ -54,11 +54,11 @@ import { FontSelectorComponent } from '../font-selector/font-selector.component'
         <div class="prop-row">
           <div class="prop-group flex-1">
             <label>Size</label>
-            <nz-input-number [(ngModel)]="textProps.fontSize" (ngModelChange)="updateProp('fontSize', $event)" [nzMin]="6" [nzMax]="200" [nzStep]="1" nzSize="small" class="full-width" />
+            <nz-input-number [(ngModel)]="textProps.fontSize" (ngModelChange)="debouncedUpdateProp('fontSize', $event)" [nzMin]="6" [nzMax]="200" [nzStep]="1" nzSize="small" class="full-width" />
           </div>
           <div class="prop-group flex-1">
             <label>Line Height</label>
-            <nz-input-number [(ngModel)]="textProps.lineHeight" (ngModelChange)="updateProp('lineHeight', $event)" [nzMin]="0.5" [nzMax]="3" [nzStep]="0.1" nzSize="small" class="full-width" />
+            <nz-input-number [(ngModel)]="textProps.lineHeight" (ngModelChange)="debouncedUpdateProp('lineHeight', $event)" [nzMin]="0.5" [nzMax]="3" [nzStep]="0.1" nzSize="small" class="full-width" />
           </div>
         </div>
         <div class="prop-group">
@@ -94,23 +94,23 @@ import { FontSelectorComponent } from '../font-selector/font-selector.component'
         </div>
         <div class="prop-group">
           <label>Opacity</label>
-          <nz-input-number [(ngModel)]="textProps.opacity" (ngModelChange)="updateProp('opacity', $event)" [nzMin]="0" [nzMax]="1" [nzStep]="0.05" nzSize="small" class="full-width" />
+          <nz-input-number [(ngModel)]="textProps.opacity" (ngModelChange)="debouncedUpdateProp('opacity', $event)" [nzMin]="0" [nzMax]="1" [nzStep]="0.05" nzSize="small" class="full-width" />
         </div>
       } @else if (selectedType() === 'image') {
         <!-- Image Properties -->
         <h4>Image</h4>
         <div class="prop-group">
           <label>Opacity</label>
-          <nz-input-number [(ngModel)]="imageProps.opacity" (ngModelChange)="updateProp('opacity', $event)" [nzMin]="0" [nzMax]="1" [nzStep]="0.05" nzSize="small" class="full-width" />
+          <nz-input-number [(ngModel)]="imageProps.opacity" (ngModelChange)="debouncedUpdateProp('opacity', $event)" [nzMin]="0" [nzMax]="1" [nzStep]="0.05" nzSize="small" class="full-width" />
         </div>
         <div class="prop-row">
           <div class="prop-group flex-1">
             <label>Scale X</label>
-            <nz-input-number [(ngModel)]="imageProps.scaleX" (ngModelChange)="updateProp('scaleX', $event)" [nzMin]="0.01" [nzMax]="10" [nzStep]="0.1" nzSize="small" class="full-width" />
+            <nz-input-number [(ngModel)]="imageProps.scaleX" (ngModelChange)="debouncedUpdateProp('scaleX', $event)" [nzMin]="0.01" [nzMax]="10" [nzStep]="0.1" nzSize="small" class="full-width" />
           </div>
           <div class="prop-group flex-1">
             <label>Scale Y</label>
-            <nz-input-number [(ngModel)]="imageProps.scaleY" (ngModelChange)="updateProp('scaleY', $event)" [nzMin]="0.01" [nzMax]="10" [nzStep]="0.1" nzSize="small" class="full-width" />
+            <nz-input-number [(ngModel)]="imageProps.scaleY" (ngModelChange)="debouncedUpdateProp('scaleY', $event)" [nzMin]="0.01" [nzMax]="10" [nzStep]="0.1" nzSize="small" class="full-width" />
           </div>
         </div>
       } @else if (selectedType() === 'rect') {
@@ -128,7 +128,7 @@ import { FontSelectorComponent } from '../font-selector/font-selector.component'
         </div>
         <div class="prop-group">
           <label>Corner Radius</label>
-          <nz-input-number [(ngModel)]="shapeProps.rx" (ngModelChange)="updateProp('rx', $event); shapeProps.ry = $event; updateProp('ry', $event);" nzSize="small" [nzMin]="0" class="full-width" />
+          <nz-input-number [(ngModel)]="shapeProps.rx" (ngModelChange)="debouncedUpdateProp('rx', $event); shapeProps.ry = $event; debouncedUpdateProp('ry', $event);" nzSize="small" [nzMin]="0" class="full-width" />
         </div>
         <div class="prop-group">
           <label>Fill</label>
@@ -142,18 +142,18 @@ import { FontSelectorComponent } from '../font-selector/font-selector.component'
         </div>
         <div class="prop-group">
           <label>Stroke Width</label>
-          <nz-input-number [(ngModel)]="shapeProps.strokeWidth" (ngModelChange)="updateProp('strokeWidth', $event)" [nzMin]="0" [nzMax]="50" nzSize="small" class="full-width" />
+          <nz-input-number [(ngModel)]="shapeProps.strokeWidth" (ngModelChange)="debouncedUpdateProp('strokeWidth', $event)" [nzMin]="0" [nzMax]="50" nzSize="small" class="full-width" />
         </div>
         <div class="prop-group">
           <label>Opacity</label>
-          <nz-input-number [(ngModel)]="shapeProps.opacity" (ngModelChange)="updateProp('opacity', $event)" [nzMin]="0" [nzMax]="1" [nzStep]="0.05" nzSize="small" class="full-width" />
+          <nz-input-number [(ngModel)]="shapeProps.opacity" (ngModelChange)="debouncedUpdateProp('opacity', $event)" [nzMin]="0" [nzMax]="1" [nzStep]="0.05" nzSize="small" class="full-width" />
         </div>
       } @else if (selectedType() === 'circle') {
         <!-- Circle Properties -->
         <h4>Circle</h4>
         <div class="prop-group">
           <label>Radius</label>
-          <nz-input-number [(ngModel)]="circleProps.radius" (ngModelChange)="updateProp('radius', $event)" nzSize="small" [nzMin]="1" class="full-width" />
+          <nz-input-number [(ngModel)]="circleProps.radius" (ngModelChange)="debouncedUpdateProp('radius', $event)" nzSize="small" [nzMin]="1" class="full-width" />
         </div>
         <div class="prop-group">
           <label>Fill</label>
@@ -167,11 +167,11 @@ import { FontSelectorComponent } from '../font-selector/font-selector.component'
         </div>
         <div class="prop-group">
           <label>Stroke Width</label>
-          <nz-input-number [(ngModel)]="circleProps.strokeWidth" (ngModelChange)="updateProp('strokeWidth', $event)" [nzMin]="0" [nzMax]="50" nzSize="small" class="full-width" />
+          <nz-input-number [(ngModel)]="circleProps.strokeWidth" (ngModelChange)="debouncedUpdateProp('strokeWidth', $event)" [nzMin]="0" [nzMax]="50" nzSize="small" class="full-width" />
         </div>
         <div class="prop-group">
           <label>Opacity</label>
-          <nz-input-number [(ngModel)]="circleProps.opacity" (ngModelChange)="updateProp('opacity', $event)" [nzMin]="0" [nzMax]="1" [nzStep]="0.05" nzSize="small" class="full-width" />
+          <nz-input-number [(ngModel)]="circleProps.opacity" (ngModelChange)="debouncedUpdateProp('opacity', $event)" [nzMin]="0" [nzMax]="1" [nzStep]="0.05" nzSize="small" class="full-width" />
         </div>
       } @else {
         <nz-empty nzDescription="Select an element to edit"></nz-empty>
@@ -197,6 +197,9 @@ export class PropertiesPanelComponent implements OnDestroy {
   private selectionState = inject(SelectionState);
   private canvasState = inject(CanvasState);
   private destroy$ = new Subject<void>();
+  private propUpdate$ = new Subject<{ prop: string; value: unknown }>();
+  private dimensionUpdate$ = new Subject<void>();
+  private canvasSizeUpdate$ = new Subject<void>();
 
   selectedType = this.selectionState.selectedType;
 
@@ -237,6 +240,26 @@ export class PropertiesPanelComponent implements OnDestroy {
     this.canvasWrapper.onTextChanged$.pipe(takeUntil(this.destroy$)).subscribe(() => {
       this.loadProperties();
     });
+
+    // Debounced property updates for numeric inputs (avoid excessive history entries)
+    this.propUpdate$.pipe(
+      debounceTime(150),
+      takeUntil(this.destroy$),
+    ).subscribe(({ prop, value }) => {
+      if (this.currentElementId) {
+        this.canvasWrapper.updateElement(this.currentElementId, { [prop]: value });
+      }
+    });
+
+    this.dimensionUpdate$.pipe(
+      debounceTime(150),
+      takeUntil(this.destroy$),
+    ).subscribe(() => this.doUpdateDimension());
+
+    this.canvasSizeUpdate$.pipe(
+      debounceTime(300),
+      takeUntil(this.destroy$),
+    ).subscribe(() => this.doUpdateCanvasSize());
   }
 
   ngOnDestroy(): void {
@@ -300,17 +323,29 @@ export class PropertiesPanelComponent implements OnDestroy {
     this.canvasWrapper.updateElement(this.currentElementId, { [prop]: value });
   }
 
+  /** Debounced version for numeric inputs that fire rapidly */
+  debouncedUpdateProp(prop: string, value: unknown): void {
+    this.propUpdate$.next({ prop, value });
+  }
+
   updateDimension(): void {
+    this.dimensionUpdate$.next();
+  }
+
+  private doUpdateDimension(): void {
     if (!this.currentElementId) return;
     const props = this.canvasWrapper.getElementProperties(this.currentElementId);
     if (!props) return;
-    // For shapes, we need to set scaleX/scaleY to achieve desired width/height
     const scaleX = this.shapeProps.width / (props.width || 1);
     const scaleY = this.shapeProps.height / (props.height || 1);
     this.canvasWrapper.updateElement(this.currentElementId, { scaleX, scaleY });
   }
 
   updateCanvasSize(): void {
+    this.canvasSizeUpdate$.next();
+  }
+
+  private doUpdateCanvasSize(): void {
     this.canvasState.canvasWidth.set(this.canvasWidth);
     this.canvasState.canvasHeight.set(this.canvasHeight);
     this.canvasWrapper.setDimensions(this.canvasWidth, this.canvasHeight);

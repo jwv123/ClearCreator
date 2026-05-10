@@ -1,15 +1,21 @@
 import { Component, OnInit, OnDestroy, ViewChild, ElementRef, inject, ChangeDetectionStrategy, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { CanvasWrapperService } from '../../canvas/canvas-wrapper.service';
 import { CanvasState } from '../../state/canvas.state';
 
 @Component({
   selector: 'app-canvas-area',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, NzSpinModule],
   template: `
     <div class="canvas-area" #canvasContainer>
-      <div class="canvas-wrapper">
+      @if (!canvasWrapper.isReady()) {
+        <div class="canvas-loading">
+          <nz-spin nzSimple nzTip="Loading canvas..."></nz-spin>
+        </div>
+      }
+      <div class="canvas-wrapper" [class.canvas-hidden]="!canvasWrapper.isReady()">
         <canvas #canvasEl></canvas>
       </div>
     </div>
@@ -28,6 +34,17 @@ import { CanvasState } from '../../state/canvas.state';
       background: #fff;
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
+    .canvas-hidden {
+      visibility: hidden;
+    }
+    .canvas-loading {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -35,7 +52,7 @@ export class CanvasAreaComponent implements OnInit, OnDestroy {
   @ViewChild('canvasEl') canvasEl!: ElementRef<HTMLCanvasElement>;
   @ViewChild('canvasContainer') canvasContainer!: ElementRef<HTMLDivElement>;
 
-  private canvasWrapper = inject(CanvasWrapperService);
+  canvasWrapper = inject(CanvasWrapperService);
   private canvasState = inject(CanvasState);
   private zone = inject(NgZone);
   private resizeObserver?: ResizeObserver;
@@ -44,9 +61,9 @@ export class CanvasAreaComponent implements OnInit, OnDestroy {
     // Canvas init happens in ngAfterViewInit when ViewChild refs are available
   }
 
-  ngAfterViewInit(): void {
+  async ngAfterViewInit(): Promise<void> {
     if (this.canvasEl && this.canvasContainer) {
-      this.canvasWrapper.init(
+      await this.canvasWrapper.init(
         this.canvasEl.nativeElement,
         this.canvasState.canvasWidth(),
         this.canvasState.canvasHeight()

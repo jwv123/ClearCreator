@@ -7,3 +7,4 @@
 - **Properties panel reads stale data** — PropertiesPanelComponent reads element properties on selection/modified events but doesn't refresh on continuous drag operations (object:moving).
 - **Backend tsc build fails** — `rootDir` issue with path aliases to `libs/` outside `apps/api/src`. Works at runtime via `tsx` but `tsc` build produces errors. Needs composite project references or build tooling update.
 - **Modify flow has no streaming** — `/api/ai/modify` is non-streaming. For complex modifications, a streaming variant would improve UX.
+- **Mobile editor is limited** — sidebars collapse on mobile but the canvas editing experience is still desktop-first. Touch interactions and pinch-to-zoom are not implemented.

@@ -32,6 +32,10 @@
 ## Fabric.js (Canvas)
 
 - **Never import `fabric` directly in components** — always go through `CanvasWrapperService`
+- Fabric.js is loaded dynamically via `import('fabric')` in `CanvasWrapperService.init()` — it ships as a separate chunk
+- `CanvasWrapperService` exposes `isReady` signal that becomes `true` after Fabric.js loads and canvas initializes
+- `CanvasAreaComponent` shows a spinner until `isReady()` is true
+- `FontService` uses dynamic `import('fabric')` for `cache.clearFontCache()` — no static fabric imports outside `CanvasWrapperService`
 - Only `CanvasAreaComponent` holds the `<canvas>` DOM ref; all other components use the service
 - Element IDs use `crypto.randomUUID()` assigned as `(obj as any).id`
 - Canvas events are bridged to both signals and RxJS Subjects in `CanvasWrapperService`
@@ -41,7 +45,7 @@
 - Layer ordering uses `bringForward()`, `sendBackward()`, `bringToFront()`, `sendToBack()`
 - Visibility toggles: `toggleVisibility()`, `isElementVisible()`
 - Lock/unlock: `lockElement()`, `unlockElement()`, `isElementLocked()` — sets `selectable` and `evented` on the Fabric object
-- Export types use `ImageFormat` from `fabric` (`import { type ImageFormat } from 'fabric'`)
+- Export types use a local type alias (`type ImageFormat = 'png' | 'jpeg'`) instead of importing from `fabric`
 
 ## Keyboard Shortcuts
 
@@ -54,7 +58,7 @@
 
 ## Font System
 
-- `FontService` (`core/services/`) manages Google Fonts — fetches font list from `/api/fonts/popular`, loads fonts on demand via Google Fonts CSS `<link>` injection + `document.fonts.load()`, clears Fabric.js `cache.clearFontCache()` after loading, deduplicates concurrent loads
+- `FontService` (`core/services/`) manages Google Fonts — fetches font list from `/api/fonts/popular`, loads fonts on demand via Google Fonts CSS `<link>` injection + `document.fonts.load()`, clears Fabric.js font cache via dynamic `import('fabric')` after loading, deduplicates concurrent loads
 - `FontSelectorComponent` (`features/editor/components/font-selector/`) provides a searchable NZ-ZORRO dropdown with System Fonts and Google Fonts option groups, font preview rendering, and preloading
 - `AiState.applyDesignToCanvas()` extracts font families from AI designs and calls `FontService.ensureFontsLoaded()` before rendering — fonts are guaranteed loaded before `canvasWrapper.loadFromJSON()`
 - `AiState.modifySelectedElements()` preloads fonts from AI modifications before applying changes
@@ -64,11 +68,26 @@
 ## Upload System
 
 - `UploadService` (`core/services/`) manages image uploads to Supabase Storage — two-phase flow: (1) call `createUpload` GraphQL mutation to get `storagePath` and metadata, (2) upload file to Supabase Storage at that path, (3) update local signal
-- `UploadService` tracks `uploads`, `isUploading`, `uploadError` as signals
+- `UploadService` tracks `uploads`, `isUploading`, `isLoadingInitial`, `uploadError` as signals
 - `UploadService.getImageDimensions()` uses `Image()` + `URL.createObjectURL` to read `naturalWidth`/`naturalHeight` before upload
-- `AssetsPanelComponent` shows uploaded images in a 3-column grid with click-to-add-to-canvas, hover-reveal delete button, file name and dimensions display
+- `AssetsPanelComponent` shows uploaded images in a 3-column grid with click-to-add-to-canvas, hover-reveal delete button, file name and dimensions display, `decoding="async"` on images, error fallback to placeholder SVG, and initial loading spinner
 - The sidebar "Image" tool switches to the Assets tab rather than opening a local file picker
 - `CanvasWrapperService.addImageFromURL()` is used to add uploaded images to canvas (no canvas changes needed)
+
+## Performance & Polish
+
+- Fabric.js loads dynamically via `import('fabric')` — separate chunk, editor shell renders immediately with spinner
+- `LayersPanelComponent` uses `CdkVirtualScrollViewport` from `@angular/cdk/scrolling` for virtual scrolling with `*cdkVirtualFor`
+- `PropertiesPanelComponent` debounces numeric input changes (150ms) via `Subject + debounceTime` — prevents excessive history entries during typing
+- `CanvasAreaComponent` shows `<nz-spin>` until `CanvasWrapperService.isReady()` is true
+- `EditorComponent` shows a full-editor loading overlay while `CanvasState.isLoading()` is true (project data loading)
+- `AiPanelComponent` shows spinner next to model selector while models list is empty
+- `AssetsPanelComponent` shows loading spinner on initial fetch via `UploadService.isLoadingInitial` signal
+- Editor sidebars hide on mobile (<768px) via `BreakpointObserver` — a bottom toolbar with tool and panel toggle icons appears instead
+- Mobile panel overlay slides up from bottom when toggling Properties/Layers/AI/Assets on small screens
+- Dashboard project cards use responsive `nzXs/nzSm/nzMd/nzLg` spans (1→2→3→4 columns)
+- Auth card uses `max-width: 400px; width: 100%` for responsive width
+- CSS custom properties for breakpoints defined in `:root` in `styles.scss`
 
 ## Backend (Node.js)
 

@@ -12,7 +12,8 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { CanvasWrapperService } from '../../canvas/canvas-wrapper.service';
 import { AuthService } from '../../../../core/services/auth.service';
-import { type ImageFormat } from 'fabric';
+
+type ImageFormat = 'png' | 'jpeg';
 
 export type ExportFormat = 'png' | 'jpeg' | 'pdf';
 

@@ -47,8 +47,8 @@ import { AuthService } from '../../../core/services/auth.service';
     </div>
   `,
   styles: [`
-    .auth-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f0f2f5; }
-    .auth-card { width: 400px; }
+    .auth-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f0f2f5; padding: 16px; }
+    .auth-card { width: 100%; max-width: 400px; }
     .auth-footer { text-align: center; margin-top: 16px; }
   `],
 })

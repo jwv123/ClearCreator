@@ -79,17 +79,21 @@ export class UploadService {
 
   uploads = signal<Upload[]>([]);
   isUploading = signal(false);
+  isLoadingInitial = signal(false);
   uploadError = signal<string | null>(null);
 
   loadUploads(projectId: string): void {
+    this.isLoadingInitial.set(true);
     this.apollo
       .query({ query: PROJECT_UPLOADS_QUERY, variables: { id: projectId } })
       .subscribe({
         next: (result) => {
           this.uploads.set(result.data!.project.uploads);
+          this.isLoadingInitial.set(false);
         },
         error: (err) => {
           this.uploadError.set(err.message || 'Failed to load uploads');
+          this.isLoadingInitial.set(false);
         },
       });
   }

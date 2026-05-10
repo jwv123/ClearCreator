@@ -59,9 +59,9 @@
 - [x] Implement auto-save (debounced, every 5s of inactivity)
 - [x] Generate thumbnail on save via `CanvasWrapperService.toDataURL()` at low multiplier
 
-## Phase 10: Polish
-- [ ] Lazy load Fabric.js (dynamic `import()`) to reduce initial bundle size
-- [ ] Virtual scrolling for layers panel with many objects
-- [ ] Image lazy loading in assets panel
-- [ ] Loading states and error handling throughout
-- [ ] Mobile-responsive layout considerations
+## Phase 10: Polish ✅
+- [x] Lazy load Fabric.js (dynamic `import()`) to reduce initial bundle size
+- [x] Virtual scrolling for layers panel with many objects
+- [x] Image lazy loading in assets panel (decoding="async", error fallback, initial loading state)
+- [x] Loading states and error handling throughout (editor overlay, canvas spinner, AI model spinner, debounced property inputs)
+- [x] Mobile-responsive layout (collapsible sidebars, responsive dashboard grid, responsive auth cards, topbar adjustments)

@@ -4,8 +4,12 @@ import { CommonModule } from '@angular/common';
 import { Subject, takeUntil, debounceTime, merge } from 'rxjs';
 import { NzLayoutModule } from 'ng-zorro-antd/layout';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
+import { NzSpinModule } from 'ng-zorro-antd/spin';
+import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzModalService } from 'ng-zorro-antd/modal';
 import { NzMessageService } from 'ng-zorro-antd/message';
+import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { CanvasWrapperService } from './canvas/canvas-wrapper.service';
 import { CanvasState } from './state/canvas.state';
 import { SelectionState } from './state/selection.state';
@@ -28,12 +32,18 @@ import { KeyboardShortcutsService } from './keyboard-shortcuts.service';
   selector: 'app-editor',
   standalone: true,
   imports: [
-    CommonModule, NzLayoutModule, NzTabsModule,
+    CommonModule, NzLayoutModule, NzTabsModule, NzSpinModule, NzButtonModule, NzIconModule,
     TopbarComponent, SidebarComponent, CanvasAreaComponent,
     PropertiesPanelComponent, LayersPanelComponent, AiPanelComponent, AssetsPanelComponent,
   ],
   template: `
     <nz-layout class="editor-layout">
+      @if (canvasState.isLoading()) {
+        <div class="editor-loading-overlay">
+          <nz-spin nzSimple nzTip="Loading project..." nzSize="large"></nz-spin>
+        </div>
+      }
+
       <app-topbar
         [projectName]="projectName()"
         [canUndo]="canUndo()"
@@ -51,46 +61,116 @@ import { KeyboardShortcutsService } from './keyboard-shortcuts.service';
         (export)="showExportDialog()"
       />
 
-      <nz-layout>
-        <nz-sider class="editor-sidebar" nzWidth="280">
-          <app-sidebar
-            (addText)="addText()"
-            (addRect)="addRect()"
-            (addCircle)="addCircle()"
-            (addImage)="addImage()"
-          />
-        </nz-sider>
+      <nz-layout class="editor-body">
+        @if (!isMobile()) {
+          <nz-sider class="editor-sidebar" nzWidth="280">
+            <app-sidebar
+              (addText)="addText()"
+              (addRect)="addRect()"
+              (addCircle)="addCircle()"
+              (addImage)="addImage()"
+            />
+          </nz-sider>
+        }
 
         <nz-content class="editor-canvas-area">
           <app-canvas-area />
         </nz-content>
 
-        <nz-sider class="editor-right-panel" nzWidth="280" nzPlacement="right">
-          <nz-tabs [(nzSelectedIndex)]="rightPanelIndex" nzSize="small" [nzAnimated]="false">
-            <nz-tab nzTitle="Properties">
-              <app-properties-panel />
-            </nz-tab>
-            <nz-tab nzTitle="Layers">
-              <app-layers-panel />
-            </nz-tab>
-            <nz-tab nzTitle="AI">
-              <app-ai-panel />
-            </nz-tab>
-            <nz-tab nzTitle="Assets">
-              <app-assets-panel />
-            </nz-tab>
-          </nz-tabs>
-        </nz-sider>
+        @if (!isMobile()) {
+          <nz-sider class="editor-right-panel" nzWidth="280" nzPlacement="right">
+            <nz-tabs [(nzSelectedIndex)]="rightPanelIndex" nzSize="small" [nzAnimated]="false">
+              <nz-tab nzTitle="Properties">
+                <app-properties-panel />
+              </nz-tab>
+              <nz-tab nzTitle="Layers">
+                <app-layers-panel />
+              </nz-tab>
+              <nz-tab nzTitle="AI">
+                <app-ai-panel />
+              </nz-tab>
+              <nz-tab nzTitle="Assets">
+                <app-assets-panel />
+              </nz-tab>
+            </nz-tabs>
+          </nz-sider>
+        }
       </nz-layout>
+
+      @if (isMobile()) {
+        <div class="mobile-panel-bar">
+          <button nz-button nzType="text" nzSize="small" (click)="addText()">
+            <span nz-icon nzType="font-size"></span>
+          </button>
+          <button nz-button nzType="text" nzSize="small" (click)="addRect()">
+            <span nz-icon nzType="border"></span>
+          </button>
+          <button nz-button nzType="text" nzSize="small" (click)="addCircle()">
+            <span nz-icon nzType="circle"></span>
+          </button>
+          <button nz-button nzType="text" nzSize="small" (click)="addImage()">
+            <span nz-icon nzType="picture"></span>
+          </button>
+          <span class="mobile-bar-divider"></span>
+          <button nz-button nzType="text" nzSize="small" (click)="rightPanelIndex = 0; showMobilePanel.set(true)">
+            <span nz-icon nzType="edit"></span>
+          </button>
+          <button nz-button nzType="text" nzSize="small" (click)="rightPanelIndex = 1; showMobilePanel.set(true)">
+            <span nz-icon nzType="bars"></span>
+          </button>
+          <button nz-button nzType="text" nzSize="small" (click)="rightPanelIndex = 2; showMobilePanel.set(true)">
+            <span nz-icon nzType="thunderbolt"></span>
+          </button>
+          <button nz-button nzType="text" nzSize="small" (click)="rightPanelIndex = 3; showMobilePanel.set(true)">
+            <span nz-icon nzType="picture"></span>
+          </button>
+        </div>
+
+        @if (showMobilePanel()) {
+          <div class="mobile-panel-overlay" (click)="showMobilePanel.set(false)">
+            <div class="mobile-panel-sheet" (click)="$event.stopPropagation()">
+              <nz-tabs [(nzSelectedIndex)]="rightPanelIndex" nzSize="small" [nzAnimated]="false">
+                <nz-tab nzTitle="Properties">
+                  <app-properties-panel />
+                </nz-tab>
+                <nz-tab nzTitle="Layers">
+                  <app-layers-panel />
+                </nz-tab>
+                <nz-tab nzTitle="AI">
+                  <app-ai-panel />
+                </nz-tab>
+                <nz-tab nzTitle="Assets">
+                  <app-assets-panel />
+                </nz-tab>
+              </nz-tabs>
+            </div>
+          </div>
+        }
+      }
     </nz-layout>
   `,
   styles: [`
-    .editor-layout { height: 100vh; }
+    .editor-layout { height: 100vh; position: relative; }
+    .editor-loading-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.85); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .editor-body { flex: 1; }
     .editor-sidebar { background: #fafafa; border-right: 1px solid #e8e8e8; overflow-y: auto; }
     .editor-canvas-area { flex: 1; display: flex; overflow: hidden; }
     .editor-right-panel { background: #fafafa; border-left: 1px solid #e8e8e8; overflow-y: auto; }
     .editor-right-panel ::ng-deep .ant-tabs { height: 100%; }
     .editor-right-panel ::ng-deep .ant-tabs-content { height: calc(100% - 46px); overflow-y: auto; }
+    .mobile-panel-bar {
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+      padding: 6px 8px; background: #fafafa; border-top: 1px solid #e8e8e8;
+    }
+    .mobile-bar-divider { width: 1px; height: 20px; background: #e8e8e8; margin: 0 4px; }
+    .mobile-panel-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 999;
+      display: flex; align-items: flex-end;
+    }
+    .mobile-panel-sheet {
+      width: 100%; max-height: 60vh; background: #fafafa; border-radius: 12px 12px 0 0;
+      overflow-y: auto; padding: 12px;
+    }
   `],
 })
 export class EditorComponent implements OnInit, OnDestroy, AfterViewInit {
@@ -107,6 +187,7 @@ export class EditorComponent implements OnInit, OnDestroy, AfterViewInit {
   private message = inject(NzMessageService);
   private modal = inject(NzModalService);
   private keyboardShortcuts = inject(KeyboardShortcutsService);
+  private breakpointObserver = inject(BreakpointObserver);
   private destroy$ = new Subject<void>();
 
   projectName = signal('Untitled Project');
@@ -114,6 +195,9 @@ export class EditorComponent implements OnInit, OnDestroy, AfterViewInit {
   rightPanelIndex = 0;
   canUndo = this.historyState.canUndo;
   canRedo = this.historyState.canRedo;
+
+  isMobile = signal(false);
+  showMobilePanel = signal(false);
 
   private projectId: string | null = null;
   private pendingProjectJson: string | null = null;
@@ -125,12 +209,26 @@ export class EditorComponent implements OnInit, OnDestroy, AfterViewInit {
         this.rightPanelIndex = 2;
       }
     });
+
+    // Load project JSON once canvas is ready
+    effect(() => {
+      if (this.canvasWrapper.isReady() && this.pendingProjectJson) {
+        this.loadCanvasFromJson(this.pendingProjectJson);
+        this.pendingProjectJson = null;
+      }
+    });
   }
 
   ngOnInit(): void {
     this.projectId = this.route.snapshot.paramMap.get('id');
     this.fontService.loadPopularFonts();
     this.keyboardShortcuts.activate();
+
+    this.breakpointObserver.observe([Breakpoints.Handset, Breakpoints.TabletPortrait])
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(result => {
+        this.isMobile.set(result.matches);
+      });
 
     if (this.projectId) {
       this.canvasState.projectId.set(this.projectId);
@@ -183,12 +281,6 @@ export class EditorComponent implements OnInit, OnDestroy, AfterViewInit {
     this.canvasWrapper.onObjectModified$.pipe(takeUntil(this.destroy$)).subscribe(() => {
       this.zoomLevel.set(Math.round(this.canvasWrapper.getZoom() * 100));
     });
-
-    // Load project data if it was fetched before canvas init
-    if (this.pendingProjectJson) {
-      this.loadCanvasFromJson(this.pendingProjectJson);
-      this.pendingProjectJson = null;
-    }
 
     // Auto-save: debounce 5s after last change
     this.saveTrigger$.pipe(

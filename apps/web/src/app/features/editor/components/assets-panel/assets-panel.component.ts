@@ -39,14 +39,18 @@ import { CanvasWrapperService } from '../../canvas/canvas-wrapper.service';
         </div>
       }
 
-      @if (uploads().length === 0 && !isUploading()) {
+      @if (uploads().length === 0 && !isUploading() && !isLoadingInitial()) {
         <nz-empty nzDescription="No uploads yet" nzNotFoundImage="simple"></nz-empty>
+      } @else if (isLoadingInitial()) {
+        <div class="assets-loading">
+          <nz-spin nzSimple nzTip="Loading assets..."></nz-spin>
+        </div>
       } @else if (!isUploading()) {
         <div class="assets-grid">
           @for (upload of uploads(); track upload.id) {
             <div class="asset-card" (click)="addToCanvas(upload)">
               <div class="asset-thumbnail">
-                <img [src]="upload.publicUrl" [alt]="upload.fileName" loading="lazy" />
+                <img [src]="upload.publicUrl" [alt]="upload.fileName" loading="lazy" decoding="async" (error)="onImageError($event)" />
                 <button nz-button nzType="text" nzSize="small" class="delete-btn"
                         nz-popconfirm="Delete this upload?" (nzOnConfirm)="confirmDelete(upload.id)"
                         (click)="$event.stopPropagation()">
@@ -73,6 +77,7 @@ import { CanvasWrapperService } from '../../canvas/canvas-wrapper.service';
     .asset-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
     .asset-thumbnail { position: relative; aspect-ratio: 1; background: #f0f0f0; display: flex; align-items: center; justify-content: center; }
     .asset-thumbnail img { width: 100%; height: 100%; object-fit: cover; }
+    .asset-thumbnail img.img-error { opacity: 0.5; }
     .delete-btn { position: absolute; top: 2px; right: 2px; opacity: 0; transition: opacity 0.2s; }
     .asset-card:hover .delete-btn { opacity: 1; }
     .asset-name { font-size: 11px; padding: 4px 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -88,6 +93,7 @@ export class AssetsPanelComponent implements OnInit, OnDestroy {
 
   uploads = this.uploadService.uploads;
   isUploading = this.uploadService.isUploading;
+  isLoadingInitial = this.uploadService.isLoadingInitial;
   uploadError = this.uploadService.uploadError;
 
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
@@ -131,6 +137,12 @@ export class AssetsPanelComponent implements OnInit, OnDestroy {
 
   clearError(): void {
     this.uploadService.uploadError.set(null);
+  }
+
+  onImageError(event: Event): void {
+    const img = event.target as HTMLImageElement;
+    img.src = 'assets/placeholder-image.svg';
+    img.classList.add('img-error');
   }
 
   ngOnDestroy(): void {
