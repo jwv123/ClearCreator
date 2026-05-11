@@ -7,7 +7,7 @@ import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzModalService } from 'ng-zorro-antd/modal';
+import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { CanvasWrapperService } from './canvas/canvas-wrapper.service';
@@ -32,7 +32,7 @@ import { KeyboardShortcutsService } from './keyboard-shortcuts.service';
   selector: 'app-editor',
   standalone: true,
   imports: [
-    CommonModule, NzLayoutModule, NzTabsModule, NzSpinModule, NzButtonModule, NzIconModule,
+    CommonModule, NzLayoutModule, NzTabsModule, NzSpinModule, NzButtonModule, NzIconModule, NzModalModule,
     TopbarComponent, SidebarComponent, CanvasAreaComponent,
     PropertiesPanelComponent, LayersPanelComponent, AiPanelComponent, AssetsPanelComponent,
   ],
@@ -106,7 +106,7 @@ import { KeyboardShortcutsService } from './keyboard-shortcuts.service';
             <span nz-icon nzType="border"></span>
           </button>
           <button nz-button nzType="text" nzSize="small" (click)="addCircle()">
-            <span nz-icon nzType="circle"></span>
+            <span nz-icon nzType="ant-design:circle"></span>
           </button>
           <button nz-button nzType="text" nzSize="small" (click)="addImage()">
             <span nz-icon nzType="picture"></span>

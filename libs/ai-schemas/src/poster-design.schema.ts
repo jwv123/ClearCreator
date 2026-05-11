@@ -22,6 +22,7 @@ export const CanvasElementSchema = z.object({
   textAlign: z.enum(['left', 'center', 'right', 'justify']).optional(),
   lineHeight: z.number().optional(),
   charSpacing: z.number().optional(),
+  radius: z.number().optional(),
   // Image-specific
   src: z.string().optional(),
   uploadId: z.string().optional(),

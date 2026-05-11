@@ -65,3 +65,18 @@
 - [x] Image lazy loading in assets panel (decoding="async", error fallback, initial loading state)
 - [x] Loading states and error handling throughout (editor overlay, canvas spinner, AI model spinner, debounced property inputs)
 - [x] Mobile-responsive layout (collapsible sidebars, responsive dashboard grid, responsive auth cards, topbar adjustments)
+
+## Phase 11: Bug Fixes & Vision AI ✅
+- [x] Fix GraphQL field resolver mapping (snake_case → camelCase) for Project, Template, Upload, User types
+- [x] Register NG-ZORRO icons via `provideNzIcons()` in app.config.ts (33 icons + custom circle SVG)
+- [x] Add `NzModalModule` import to EditorComponent (fix NzModalService provider error)
+- [x] Fix AI streaming flow — complete subject only on validated design, not on Ollama `done` flag
+- [x] Fix Fabric.js `loadFromJSON` to convert AI design format to Fabric.js serialization format (type normalization, circle radius conversion)
+- [x] Fix thumbnail upload path to match Supabase Storage RLS policy (`{userId}/thumbnails/` instead of `thumbnails/{userId}/`)
+- [x] Add vision model support — reference image URL input in AI panel, backend fetches image and sends to Ollama vision model, `VISION_SYSTEM_PROMPT` for image analysis
+- [x] Add `radius` field to `CanvasElementSchema` in Zod validation
+- [x] Improve `DESIGN_SYSTEM_PROMPT` with detailed design principles and element guidance
+- [x] Add `OLLAMA_MODEL` and `OLLAMA_VISION_MODEL` env vars with sensible defaults
+- [x] Fix canvas overflow into sidebar — `fitToScreen()` resizes canvas element to container, `projectWidth`/`projectHeight` for logical dimensions, `withProjectDimensions()` for serialization
+- [x] Add AI element position clamping — `toFabricJSON()` clamps elements to 60px safe zone, enforces minimum text width of 200px
+- [x] Strengthen system prompts — enforce left/top >= 60px safe zone, anti-overlap spacing (30-60px gaps), minimum text width, height estimation formula

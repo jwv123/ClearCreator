@@ -28,6 +28,8 @@ export class AiState {
   // --- Signals ---
   models = signal<AiModelInfo[]>([]);
   selectedModel = signal('gpt-oss:120b');
+  imageUrl = signal('');
+  visionModel = signal('qwen3-vl:235b-instruct');
   isGenerating = signal(false);
   streamingText = signal('');
   activePrompt = signal('');
@@ -63,6 +65,14 @@ export class AiState {
     this.selectedModel.set(model);
   }
 
+  setImageUrl(url: string): void {
+    this.imageUrl.set(url);
+  }
+
+  setVisionModel(model: string): void {
+    this.visionModel.set(model);
+  }
+
   generateDesignStream(prompt: string): void {
     if (!prompt.trim()) return;
 
@@ -80,6 +90,8 @@ export class AiState {
       this.canvasState.canvasHeight(),
       this.selectedModel(),
       this.abortController.signal,
+      this.imageUrl() || undefined,
+      this.visionModel() || undefined,
     ).subscribe({
       next: (data: string) => {
         try {

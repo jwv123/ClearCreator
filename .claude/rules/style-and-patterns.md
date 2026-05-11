@@ -23,10 +23,11 @@
 
 ## AI State Management
 
-- `AiService` (`core/services/`) is a pure HTTP/SSE layer with no Angular signals. It returns Observables and accepts AbortSignal
+- `AiService` (`core/services/`) is a pure HTTP/SSE layer with no Angular signals. It returns Observables and accepts AbortSignal. Methods accept optional `imageUrl` and `visionModel` parameters for vision-based generation.
 - `AiState` (`features/editor/state/`) is the single reactive store for all AI-related UI state
 - Components read from `AiState` signals and call `AiState` methods. Never call `AiService` directly from components
 - `AiState` handles: model loading, generation orchestration, streaming text accumulation, Zod validation on apply, modify flow, error handling, cancellation via AbortController
+- `AiState` holds `imageUrl` and `visionModel` signals — when `imageUrl` is set, the backend fetches the image and sends it to the vision model alongside the prompt
 - The "Apply to Canvas" flow requires explicit user action — AI designs are previewed before applying
 
 ## Fabric.js (Canvas)
@@ -34,7 +35,10 @@
 - **Never import `fabric` directly in components** — always go through `CanvasWrapperService`
 - Fabric.js is loaded dynamically via `import('fabric')` in `CanvasWrapperService.init()` — it ships as a separate chunk
 - `CanvasWrapperService` exposes `isReady` signal that becomes `true` after Fabric.js loads and canvas initializes
-- `CanvasAreaComponent` shows a spinner until `isReady()` is true
+- `CanvasWrapperService.loadFromJSON()` converts AI design format (`{ elements, canvasWidth, ... }`) to Fabric.js format (`{ version, objects, background }`) before calling `canvas.loadFromJSON()`. It normalizes type names (e.g., `FabricImage` → `image`, `Textbox` → `textbox`) and converts circle `width/height` to `radius`. It also clamps element positions to a 60px safe zone (left/top >= 60, right/bottom within bounds) and enforces minimum text width of 200px.
+- **Viewport sizing**: `fitToScreen()` resizes the canvas DOM element to match its container using `canvas.setDimensions()`, preventing the canvas from overflowing into sidebars. Uses viewport transform to center and scale project content. `projectWidth`/`projectHeight` track logical dimensions (e.g., 1080x1080) separately from the viewport dimensions. `withProjectDimensions()` temporarily restores project dimensions for serialization.
+- `getCanvasWidth()`/`getCanvasHeight()` return project dimensions (not viewport dimensions)
+- `CanvasAreaComponent` shows a spinner until `isReady()` is true. `.canvas-wrapper` has `position: relative; overflow: hidden` to contain the Fabric.js canvas container
 - `FontService` uses dynamic `import('fabric')` for `cache.clearFontCache()` — no static fabric imports outside `CanvasWrapperService`
 - Only `CanvasAreaComponent` holds the `<canvas>` DOM ref; all other components use the service
 - Element IDs use `crypto.randomUUID()` assigned as `(obj as any).id`
@@ -96,6 +100,8 @@
 - Supabase service-role client for all resolver data access (bypasses RLS)
 - Zod schemas from `@clearcreator/ai-schemas` validate AI output before sending to frontend
 - SSE streaming for AI generation: `for await (const part of response)` from Ollama JS client, written as `data: {JSON}\n\n`
+- Vision generation: When `imageUrl` is provided, backend fetches the image (max 10MB), converts to base64, sends in Ollama `Message.images` field. Uses `VISION_SYSTEM_PROMPT` instead of `DESIGN_SYSTEM_PROMPT`. Default vision model: `qwen3-vl:235b-instruct` (configurable via `OLLAMA_VISION_MODEL` env var).
+- System prompts enforce strict layout rules: element ordering (backgrounds → shapes → text), safe zone (all elements at left/top >= 60px except full-canvas backgrounds), minimum text width (200px), no text overlap (30-60px gaps between text blocks, height estimation formula: fontSize × lineHeight × lines + 30px padding)
 - Rate limiting is in-memory (100 req/min per IP) — fine for dev, needs Redis for production
 - PDF export uses pdfmake (`PdfPrinter`) with Roboto VFS fonts — only embeds images, no text rendering needed
 - Export endpoint at `POST /api/export/pdf` uses `express.json({ limit: '50mb' })` for large base64 payloads
@@ -112,8 +118,8 @@
 
 - EditorComponent subscribes to canvas change events and pushes to `saveTrigger$` Subject
 - `saveTrigger$.pipe(debounceTime(5000))` triggers `autoSave()` — 5-second debounce after last change
-- `autoSave()` serializes canvas JSON, generates thumbnail via `toDataURL({ multiplier: 0.5 })`, uploads thumbnail via `ThumbnailService`, calls `ProjectService.updateProject()`
-- `ThumbnailService.uploadThumbnail()` uploads to `thumbnails/{userId}/{projectId}.png` in Supabase Storage with `upsert: true`; falls back to base64 data URL if Storage fails
+- `autoSave()` serializes canvas JSON (via `withProjectDimensions()` for accurate project dimensions), generates thumbnail via `toDataURL({ multiplier: 0.5 })`, uploads thumbnail via `ThumbnailService`, calls `ProjectService.updateProject()`
+- `ThumbnailService.uploadThumbnail()` uploads to `{userId}/thumbnails/{projectId}.png` in Supabase Storage with `upsert: true`; falls back to base64 data URL if Storage fails
 - On component destroy (`ngOnDestroy`), force-saves if dirty
 - `CanvasState` signals: `saving`, `isLoading`, `isDirty`, `lastSavedAt`, with `markDirty()` and `markClean()` methods
 - TopbarComponent shows save status: "Saving..." (blue spinner), "Unsaved" (yellow dot), "Saved" (green check)

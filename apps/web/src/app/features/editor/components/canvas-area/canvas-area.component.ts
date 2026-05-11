@@ -33,6 +33,8 @@ import { CanvasState } from '../../state/canvas.state';
     .canvas-wrapper {
       background: #fff;
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      position: relative;
+      overflow: hidden;
     }
     .canvas-hidden {
       visibility: hidden;

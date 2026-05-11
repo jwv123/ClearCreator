@@ -27,22 +27,24 @@ export class AiService {
     );
   }
 
-  generateDesign(prompt: string, canvasWidth = 1080, canvasHeight = 1080, model = 'gpt-oss:120b'): Observable<any> {
+  generateDesign(prompt: string, canvasWidth = 1080, canvasHeight = 1080, model = 'gpt-oss:120b', imageUrl?: string, visionModel?: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/generate`, {
       prompt,
       canvasWidth,
       canvasHeight,
       model,
+      imageUrl,
+      visionModel,
     });
   }
 
-  generateDesignStream(prompt: string, canvasWidth = 1080, canvasHeight = 1080, model = 'gpt-oss:120b', signal?: AbortSignal): Observable<string> {
+  generateDesignStream(prompt: string, canvasWidth = 1080, canvasHeight = 1080, model = 'gpt-oss:120b', signal?: AbortSignal, imageUrl?: string, visionModel?: string): Observable<string> {
     const subject = new Subject<string>();
 
     fetch(`${this.apiUrl}/generate/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, canvasWidth, canvasHeight, model }),
+      body: JSON.stringify({ prompt, canvasWidth, canvasHeight, model, imageUrl, visionModel }),
       signal,
     }).then(async (response) => {
       if (!response.ok) {
@@ -81,7 +83,7 @@ export class AiService {
               if (data.validated && data.design) {
                 subject.next(JSON.stringify({ type: 'design', design: data.design }));
               }
-              if (data.done) {
+              if (data.done && data.validated) {
                 subject.complete();
                 return;
               }

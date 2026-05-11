@@ -20,7 +20,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
           <span>Rectangle</span>
         </button>
         <button nz-button nzType="default" class="tool-btn" (click)="addCircle.emit()">
-          <span nz-icon nzType="circle"></span>
+          <span nz-icon nzType="ant-design:circle"></span>
           <span>Circle</span>
         </button>
         <button nz-button nzType="default" class="tool-btn" (click)="addImage.emit()">

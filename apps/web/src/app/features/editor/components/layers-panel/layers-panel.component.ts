@@ -35,7 +35,7 @@ interface LayerItem {
             <span class="layer-icon" [ngSwitch]="layer.type">
               <span nz-icon nzType="font-size" *ngSwitchCase="'textbox'"></span>
               <span nz-icon nzType="border" *ngSwitchCase="'rect'"></span>
-              <span nz-icon nzType="circle" *ngSwitchCase="'circle'"></span>
+              <span nz-icon nzType="ant-design:circle" *ngSwitchCase="'circle'"></span>
               <span nz-icon nzType="picture" *ngSwitchCase="'image'"></span>
               <span nz-icon nzType="appstore" *ngSwitchDefault></span>
             </span>

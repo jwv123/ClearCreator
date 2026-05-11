@@ -12,7 +12,7 @@ export class ThumbnailService {
     if (!userId) throw new Error('Not authenticated');
 
     const blob = this.dataUrlToBlob(dataUrl);
-    const storagePath = `thumbnails/${userId}/${projectId}.png`;
+    const storagePath = `${userId}/thumbnails/${projectId}.png`;
 
     const { error } = await this.supabaseService.supabase.storage
       .from('uploads')

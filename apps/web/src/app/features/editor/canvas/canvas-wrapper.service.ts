@@ -49,6 +49,9 @@ export class CanvasWrapperService {
   private fabric: typeof import('fabric') | null = null;
   private canvas: import('fabric').Canvas | null = null;
   private initialized = false;
+  /** Project canvas dimensions (e.g. 1080x1080) — separate from viewport dimensions */
+  private projectWidth = 1080;
+  private projectHeight = 1080;
 
   /** Signal that becomes true once Fabric.js is loaded and the canvas is initialized */
   readonly isReady = signal(false);
@@ -80,6 +83,8 @@ export class CanvasWrapperService {
       selection: true,
       preserveObjectStacking: true,
     });
+    this.projectWidth = width;
+    this.projectHeight = height;
 
     this.setupEventListeners();
     this.initialized = true;
@@ -485,37 +490,154 @@ export class CanvasWrapperService {
     return (this.c() as any).backgroundColor as string || '#ffffff';
   }
 
+  /** Temporarily restore project dimensions for serialization, then revert viewport size */
+  private withProjectDimensions<T>(fn: () => T): T {
+    const canvas = this.c();
+    // Save current viewport dimensions
+    const viewportWidth = canvas.getWidth();
+    const viewportHeight = canvas.getHeight();
+    const vpt = [...canvas.viewportTransform!];
+
+    // Restore project dimensions for accurate serialization
+    canvas.setDimensions({ width: this.projectWidth, height: this.projectHeight });
+    canvas.setZoom(1);
+    const vptIdentity = canvas.viewportTransform!;
+    vptIdentity[4] = 0;
+    vptIdentity[5] = 0;
+    canvas.renderAll();
+
+    try {
+      return fn();
+    } finally {
+      // Restore viewport dimensions
+      canvas.setDimensions({ width: viewportWidth, height: viewportHeight });
+      canvas.setViewportTransform(vpt as any);
+      canvas.renderAll();
+    }
+  }
+
   // --- Serialization ---
 
   toJSON(): object {
-    return this.c().toJSON();
+    return this.withProjectDimensions(() => this.c().toJSON());
   }
 
   async loadFromJSON(json: object): Promise<void> {
     const canvas = this.c();
-    await canvas.loadFromJSON(json);
+    const fabricJson = this.toFabricJSON(json);
+
+    // Update project dimensions if the design specifies canvas size
+    const src = json as any;
+    if (src.canvasWidth && src.canvasHeight) {
+      this.projectWidth = src.canvasWidth;
+      this.projectHeight = src.canvasHeight;
+      canvas.setDimensions({ width: src.canvasWidth, height: src.canvasHeight });
+    }
+
+    await canvas.loadFromJSON(fabricJson);
+    // Assign IDs to all loaded objects that don't have one
+    for (const obj of canvas.getObjects()) {
+      if (!(obj as any).id) {
+        (obj as any).id = crypto.randomUUID();
+      }
+    }
     canvas.renderAll();
+  }
+
+  /** Convert AI design format to Fabric.js serialization format */
+  private toFabricJSON(design: any): object {
+    // If it already looks like Fabric.js JSON (has 'version' field from toJSON()), pass through
+    if (design.version) {
+      return design;
+    }
+
+    const canvasW = design.canvasWidth || 1080;
+    const canvasH = design.canvasHeight || 1080;
+    const SAFE_MARGIN = 60;
+
+    const elements: any[] = design.elements || [];
+    const fabricObjects = elements.map((el: any) => {
+      const obj: any = { ...el };
+
+      // Normalize type names — Fabric.js v7 class registry uses lowercase names
+      const typeMap: Record<string, string> = {
+        'FabricImage': 'image', 'Image': 'image',
+        'Textbox': 'textbox',
+        'Rect': 'rect', 'Rectangle': 'rect',
+        'Circle': 'circle', 'Ellipse': 'circle',
+        'Triangle': 'triangle',
+        'Line': 'line',
+        'Group': 'group',
+      };
+      const normalized = typeMap[el.type];
+      if (normalized) {
+        obj.type = normalized;
+      }
+
+      // Circle geometry: AI uses width/height; Fabric uses radius
+      if ((obj.type === 'circle' || el.type === 'circle') && el.width && !el.radius) {
+        obj.radius = el.width / 2;
+        delete obj.width;
+        delete obj.height;
+      }
+
+      // Clamp element positions into the safe zone so nothing sits behind UI panels
+      if (typeof obj.left === 'number' && obj.left < SAFE_MARGIN) {
+        obj.left = SAFE_MARGIN;
+      }
+      if (typeof obj.top === 'number' && obj.top < SAFE_MARGIN) {
+        obj.top = SAFE_MARGIN;
+      }
+      // Keep elements within right/bottom bounds
+      const elWidth = obj.width || 0;
+      const elHeight = obj.height || 0;
+      if (typeof obj.left === 'number' && obj.left + elWidth > canvasW - SAFE_MARGIN) {
+        obj.left = Math.max(SAFE_MARGIN, canvasW - SAFE_MARGIN - elWidth);
+      }
+      if (typeof obj.top === 'number' && obj.top + elHeight > canvasH - SAFE_MARGIN) {
+        obj.top = Math.max(SAFE_MARGIN, canvasH - SAFE_MARGIN - elHeight);
+      }
+
+      // Ensure text elements have a minimum width for text wrapping
+      if (obj.type === 'textbox' && (!obj.width || obj.width < 100)) {
+        obj.width = Math.max(obj.width || 0, 200);
+      }
+
+      return obj;
+    });
+
+    return {
+      version: '7',
+      objects: fabricObjects,
+      background: design.backgroundColor || '#ffffff',
+    };
   }
 
   // --- Export ---
 
   toDataURL(options: { format?: ImageFormat; quality?: number; multiplier?: number } = {}): string {
-    return this.c().toDataURL({
-      format: options.format || 'png',
-      quality: options.quality || 1,
-      multiplier: options.multiplier || 1,
-    });
+    return this.withProjectDimensions(() =>
+      this.c().toDataURL({
+        format: options.format || 'png',
+        quality: options.quality || 1,
+        multiplier: options.multiplier || 1,
+      })
+    );
   }
 
   // --- History ---
 
   snapshot(): object {
-    return this.c().toJSON();
+    return this.withProjectDimensions(() => this.c().toJSON());
   }
 
   async restoreSnapshot(snapshot: object): Promise<void> {
     const canvas = this.c();
     await canvas.loadFromJSON(snapshot);
+    // Restore project dimensions from snapshot
+    const snap = snapshot as any;
+    if (snap.width) this.projectWidth = snap.width;
+    if (snap.height) this.projectHeight = snap.height;
     canvas.renderAll();
   }
 
@@ -553,18 +675,24 @@ export class CanvasWrapperService {
       return;
     }
 
-    const canvasWidth = canvas.getWidth();
-    const canvasHeight = canvas.getHeight();
+    // Project (logical) canvas dimensions — e.g. 1080x1080
+    const projectWidth = this.projectWidth;
+    const projectHeight = this.projectHeight;
+
     const padding = 40;
     const availWidth = containerWidth - padding * 2;
     const availHeight = containerHeight - padding * 2;
 
-    const scale = Math.min(availWidth / canvasWidth, availHeight / canvasHeight, 1);
+    const scale = Math.min(availWidth / projectWidth, availHeight / projectHeight, 1);
+
+    // Resize the canvas DOM element to fit the container so it doesn't overflow
+    canvas.setDimensions({ width: containerWidth, height: containerHeight });
     canvas.setZoom(scale);
 
+    // Center the project content within the viewport
     const vpt = canvas.viewportTransform!;
-    vpt[4] = (containerWidth - canvasWidth * scale) / 2;
-    vpt[5] = (containerHeight - canvasHeight * scale) / 2;
+    vpt[4] = (containerWidth - projectWidth * scale) / 2;
+    vpt[5] = (containerHeight - projectHeight * scale) / 2;
     canvas.renderAll();
   }
 
@@ -650,16 +778,18 @@ export class CanvasWrapperService {
 
   setDimensions(width: number, height: number): void {
     const canvas = this.c();
+    this.projectWidth = width;
+    this.projectHeight = height;
     canvas.setDimensions({ width, height });
     canvas.renderAll();
   }
 
   getCanvasWidth(): number {
-    return this.c().getWidth();
+    return this.projectWidth;
   }
 
   getCanvasHeight(): number {
-    return this.c().getHeight();
+    return this.projectHeight;
   }
 
   getCanvas(): import('fabric').Canvas {

@@ -84,7 +84,7 @@ export const resolvers = {
           canvas_width: input.canvasWidth || 1080,
           canvas_height: input.canvasHeight || 1080,
           background_color: input.backgroundColor || '#ffffff',
-          canvas_json: '{}',
+          canvas_json: JSON.stringify({ version: '7', objects: [] }),
         })
         .select()
         .single();
@@ -195,13 +195,68 @@ export const resolvers = {
     },
   },
 
-  // Field resolvers for nested types
+  // Field resolvers for nested types and snake_case → camelCase mapping
   Project: {
+    ownerId: (parent: any) => parent.owner_id,
+    canvasJson: (parent: any) => typeof parent.canvas_json === 'string' ? parent.canvas_json : JSON.stringify(parent.canvas_json ?? '{}'),
+    canvasWidth: (parent: any) => parent.canvas_width,
+    canvasHeight: (parent: any) => parent.canvas_height,
+    backgroundColor: (parent: any) => parent.background_color,
+    thumbnailUrl: (parent: any) => parent.thumbnail_url,
+    isTemplate: (parent: any) => parent.is_template,
+    isPublic: (parent: any) => parent.is_public,
+    createdAt: (parent: any) => parent.created_at,
+    updatedAt: (parent: any) => parent.updated_at,
     uploads: async (parent: any) => {
       const { data } = await supabase
         .from('uploads')
         .select('*')
         .eq('project_id', parent.id);
+      return (data || []).map((u: any) => ({
+        ...u,
+        ownerId: u.owner_id,
+        projectId: u.project_id,
+        fileName: u.file_name,
+        fileSize: u.file_size,
+        contentType: u.content_type,
+        storagePath: u.storage_path,
+        publicUrl: u.public_url,
+        createdAt: u.created_at,
+      }));
+    },
+  },
+
+  Template: {
+    canvasJson: (parent: any) => typeof parent.canvas_json === 'string' ? parent.canvas_json : JSON.stringify(parent.canvas_json ?? '{}'),
+    canvasWidth: (parent: any) => parent.canvas_width,
+    canvasHeight: (parent: any) => parent.canvas_height,
+    backgroundColor: (parent: any) => parent.background_color,
+    thumbnailUrl: (parent: any) => parent.thumbnail_url,
+    isFeatured: (parent: any) => parent.is_featured,
+    sortOrder: (parent: any) => parent.sort_order,
+    createdAt: (parent: any) => parent.created_at,
+  },
+
+  Upload: {
+    ownerId: (parent: any) => parent.owner_id ?? parent.ownerId,
+    projectId: (parent: any) => parent.project_id ?? parent.projectId,
+    fileName: (parent: any) => parent.file_name ?? parent.fileName,
+    fileSize: (parent: any) => parent.file_size ?? parent.fileSize,
+    contentType: (parent: any) => parent.content_type ?? parent.contentType,
+    storagePath: (parent: any) => parent.storage_path ?? parent.storagePath,
+    publicUrl: (parent: any) => parent.public_url ?? parent.publicUrl,
+    createdAt: (parent: any) => parent.created_at ?? parent.createdAt,
+  },
+
+  User: {
+    displayName: (parent: any) => parent.display_name ?? parent.displayName,
+    avatarUrl: (parent: any) => parent.avatar_url ?? parent.avatarUrl,
+    createdAt: (parent: any) => parent.created_at ?? parent.createdAt,
+    projects: async (parent: any) => {
+      const { data } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('owner_id', parent.id);
       return data || [];
     },
   },

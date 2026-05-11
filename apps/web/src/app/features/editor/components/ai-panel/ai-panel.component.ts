@@ -55,6 +55,34 @@ import { AiState } from '../../state/ai.state';
         ></textarea>
       </div>
 
+      <!-- Reference Image URL -->
+      <div class="prop-group">
+        <label>Reference Image URL <span class="optional-label">(optional)</span></label>
+        <input
+          nz-input
+          [(ngModel)]="imageUrl"
+          placeholder="https://example.com/design.jpg"
+          class="full-width"
+        />
+        @if (imageUrl) {
+          <small class="hint-text">Image will be sent to a vision model for design inspiration.</small>
+        }
+      </div>
+
+      <!-- Vision Model (shown when imageUrl is set) -->
+      @if (imageUrl) {
+        <div class="prop-group">
+          <label>Vision Model</label>
+          <input
+            nz-input
+            [(ngModel)]="visionModel"
+            placeholder="qwen3-vl:235b-instruct"
+            class="full-width"
+          />
+          <small class="hint-text">Ollama vision model for image analysis</small>
+        </div>
+      }
+
       <!-- Generate / Cancel buttons -->
       <div class="action-row">
         <button
@@ -168,6 +196,8 @@ import { AiState } from '../../state/ai.state';
 
     .prop-group { margin-bottom: 12px; }
     .prop-group label { display: block; font-size: 11px; color: #888; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .optional-label { color: #aaa; font-weight: normal; text-transform: none; }
+    .hint-text { display: block; margin-top: 2px; color: #888; font-size: 11px; }
     .full-width { width: 100%; }
 
     .prompt-input { font-size: 13px; resize: vertical; }
@@ -213,9 +243,13 @@ export class AiPanelComponent {
   aiState = inject(AiState);
   prompt = '';
   modifyInstruction = '';
+  imageUrl = '';
+  visionModel = 'qwen3-vl:235b-instruct';
 
   generate(): void {
     if (!this.prompt.trim()) return;
+    this.aiState.setImageUrl(this.imageUrl);
+    this.aiState.setVisionModel(this.visionModel);
     this.aiState.generateDesignStream(this.prompt);
     this.prompt = '';
   }

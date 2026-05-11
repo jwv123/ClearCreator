@@ -23,6 +23,15 @@ cd apps/api && npm start
 npm start
 
 # Database — apply migrations via Supabase dashboard or CLI
-````
+```
 
 No test runner is configured. All Angular schematics have `skipTests: true`.
+
+## Environment Variables
+
+Backend (`apps/api/.env`):
+- `OLLAMA_HOST` — Ollama API host (default: `https://ollama.com`)
+- `OLLAMA_API_KEY` — Ollama Cloud API key
+- `OLLAMA_MODEL` — Default text model (default: `gpt-oss:120b`)
+- `OLLAMA_VISION_MODEL` — Default vision model for image-based generation (default: `qwen3-vl:235b-instruct`)
+- `GOOGLE_FONTS_API_KEY` — Required for font catalog; falls back to empty list if missing

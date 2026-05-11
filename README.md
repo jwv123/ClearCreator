@@ -10,7 +10,8 @@ AI-powered design tool — generate posters, flyers, social media posts, and mor
 2. **Generate** — Ollama Cloud creates a structured JSON design specification
 3. **Edit** — all elements (text, shapes, images) are fully editable on the Fabric.js canvas
 4. **AI Modify** — select an element and ask AI to change colors, fonts, layout, etc.
-5. **Export** — download as PNG, JPG, or PDF
+5. **Vision AI** — provide a reference image URL and the AI will generate a design inspired by it
+6. **Export** — download as PNG, JPG, or PDF
 
 ## Tech Stack
 
@@ -104,7 +105,7 @@ clearcreator/
 
 The editor uses strict separation — **only `CanvasWrapperService` touches Fabric.js**:
 
-- **CanvasWrapperService** — owns the Fabric.js `Canvas` instance, bridges to Angular signals and RxJS Subjects
+- **CanvasWrapperService** — owns the Fabric.js `Canvas` instance, bridges to Angular signals and RxJS Subjects. Resizes canvas element to container (preventing overflow), uses viewport transform for centering/scaling
 - **State services** — `CanvasState`, `SelectionState`, `HistoryState`, `AiState` hold reactive state
 - **Infrastructure services** — `AuthService`, `AiService`, `FontService`, `SupabaseService`, `ThumbnailService`, `ProjectService` handle external I/O
 
@@ -158,6 +159,7 @@ Auto-save:    Canvas changes → 5s debounce → updateProject mutation + thumbn
 | 8 | ✅ | Undo/redo + keyboard shortcuts |
 | 9 | ✅ | Export — PNG/JPG/PDF, auto-save, thumbnails |
 | 10 | ✅ | Polish — lazy loading, virtual scroll, mobile responsive |
+| 11 | ✅ | Bug fixes & Vision AI — GraphQL resolvers, icon registration, AI streaming fix, Fabric.js loadFromJSON conversion, vision model support, canvas viewport sizing, AI element position clamping, safe zone system prompts |
 
 See [TODO.md](./TODO.md) for detailed task breakdowns.
 
