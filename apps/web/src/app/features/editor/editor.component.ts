@@ -200,7 +200,8 @@ export class EditorComponent implements OnInit, OnDestroy, AfterViewInit {
   showMobilePanel = signal(false);
 
   private projectId: string | null = null;
-  private pendingProjectJson: string | null = null;
+  private pendingProjectJson = signal<string | null>(null);
+  private isLoadingProject = false;
   private saveTrigger$ = new Subject<void>();
 
   constructor() {
@@ -212,9 +213,10 @@ export class EditorComponent implements OnInit, OnDestroy, AfterViewInit {
 
     // Load project JSON once canvas is ready
     effect(() => {
-      if (this.canvasWrapper.isReady() && this.pendingProjectJson) {
-        this.loadCanvasFromJson(this.pendingProjectJson);
-        this.pendingProjectJson = null;
+      if (this.canvasWrapper.isReady() && this.pendingProjectJson()) {
+        const json = this.pendingProjectJson()!;
+        this.pendingProjectJson.set(null);
+        this.loadCanvasFromJson(json);
       }
     });
   }
@@ -240,6 +242,7 @@ export class EditorComponent implements OnInit, OnDestroy, AfterViewInit {
 
   ngAfterViewInit(): void {
     this.canvasWrapper.onObjectAdded$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      if (this.isLoadingProject) return;
       this.historyState.push({
         json: this.canvasWrapper.snapshot(),
         timestamp: Date.now(),
@@ -249,6 +252,7 @@ export class EditorComponent implements OnInit, OnDestroy, AfterViewInit {
     });
 
     this.canvasWrapper.onObjectRemoved$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      if (this.isLoadingProject) return;
       this.historyState.push({
         json: this.canvasWrapper.snapshot(),
         timestamp: Date.now(),
@@ -258,6 +262,7 @@ export class EditorComponent implements OnInit, OnDestroy, AfterViewInit {
     });
 
     this.canvasWrapper.onObjectModified$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      if (this.isLoadingProject) return;
       this.historyState.push({
         json: this.canvasWrapper.snapshot(),
         timestamp: Date.now(),
@@ -270,6 +275,7 @@ export class EditorComponent implements OnInit, OnDestroy, AfterViewInit {
       debounceTime(300),
       takeUntil(this.destroy$),
     ).subscribe(() => {
+      if (this.isLoadingProject) return;
       this.historyState.push({
         json: this.canvasWrapper.snapshot(),
         timestamp: Date.now(),
@@ -278,8 +284,8 @@ export class EditorComponent implements OnInit, OnDestroy, AfterViewInit {
       this.saveTrigger$.next();
     });
 
-    this.canvasWrapper.onObjectModified$.pipe(takeUntil(this.destroy$)).subscribe(() => {
-      this.zoomLevel.set(Math.round(this.canvasWrapper.getZoom() * 100));
+    this.canvasWrapper.onZoomChanged$.pipe(takeUntil(this.destroy$)).subscribe(zoom => {
+      this.zoomLevel.set(Math.round(zoom * 100));
     });
 
     // Auto-save: debounce 5s after last change
@@ -312,7 +318,7 @@ export class EditorComponent implements OnInit, OnDestroy, AfterViewInit {
         this.canvasState.canvasBackground.set(project.backgroundColor);
 
         if (project.canvasJson && project.canvasJson !== '{}') {
-          this.pendingProjectJson = project.canvasJson;
+          this.pendingProjectJson.set(project.canvasJson);
         }
 
         this.canvasState.isLoading.set(false);
@@ -325,16 +331,25 @@ export class EditorComponent implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
-  private loadCanvasFromJson(json: string): void {
+  private async loadCanvasFromJson(json: string): Promise<void> {
+    this.isLoadingProject = true;
     try {
       const parsed = JSON.parse(json);
       if (parsed && typeof parsed === 'object') {
-        this.canvasWrapper.loadFromJSON(parsed);
+        await this.canvasWrapper.loadFromJSON(parsed);
       }
+      // Clear history and set initial state after project load
+      this.historyState.clear();
+      this.historyState.push({
+        json: this.canvasWrapper.snapshot(),
+        timestamp: Date.now(),
+      });
+      this.canvasState.markClean();
     } catch {
       // Invalid JSON — start with blank canvas
+    } finally {
+      this.isLoadingProject = false;
     }
-    this.canvasState.markClean();
   }
 
   private async autoSave(): Promise<void> {

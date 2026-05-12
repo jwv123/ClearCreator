@@ -160,6 +160,7 @@ Auto-save:    Canvas changes → 5s debounce → updateProject mutation + thumbn
 | 9 | ✅ | Export — PNG/JPG/PDF, auto-save, thumbnails |
 | 10 | ✅ | Polish — lazy loading, virtual scroll, mobile responsive |
 | 11 | ✅ | Bug fixes & Vision AI — GraphQL resolvers, icon registration, AI streaming fix, Fabric.js loadFromJSON conversion, vision model support, canvas viewport sizing, AI element position clamping, safe zone system prompts |
+| 12 | ✅ | Canvas centering, zoom & AI layout — fix Fit button, zoomToPoint centering, viewport refresh after load/undo, constraint-based layout post-processing (@lume/kiwi), multi-stage CoT system prompts |
 
 See [TODO.md](./TODO.md) for detailed task breakdowns.
 

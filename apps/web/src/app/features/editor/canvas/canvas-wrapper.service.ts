@@ -67,6 +67,11 @@ export class CanvasWrapperService {
   onSelectionChanged$ = new Subject<SelectionChangedEvent>();
   onTextChanged$ = new Subject<{ id: string; text: string }>();
   onObjectsReordered$ = new Subject<void>();
+  onZoomChanged$ = new Subject<number>();
+
+  /** Cached container dimensions for fitToScreen when called without arguments */
+  private lastContainerWidth = 0;
+  private lastContainerHeight = 0;
 
   async init(canvasEl: HTMLCanvasElement, width: number, height: number): Promise<void> {
     if (this.initialized) {
@@ -528,10 +533,12 @@ export class CanvasWrapperService {
 
     // Update project dimensions if the design specifies canvas size
     const src = json as any;
-    if (src.canvasWidth && src.canvasHeight) {
-      this.projectWidth = src.canvasWidth;
-      this.projectHeight = src.canvasHeight;
-      canvas.setDimensions({ width: src.canvasWidth, height: src.canvasHeight });
+    const dimWidth = src.canvasWidth || src.width;
+    const dimHeight = src.canvasHeight || src.height;
+    if (dimWidth && dimHeight) {
+      this.projectWidth = dimWidth;
+      this.projectHeight = dimHeight;
+      canvas.setDimensions({ width: dimWidth, height: dimHeight });
     }
 
     await canvas.loadFromJSON(fabricJson);
@@ -542,6 +549,8 @@ export class CanvasWrapperService {
       }
     }
     canvas.renderAll();
+    // Re-fit viewport after loading new content
+    this.fitToScreen();
   }
 
   /** Convert AI design format to Fabric.js serialization format */
@@ -603,6 +612,10 @@ export class CanvasWrapperService {
         obj.width = Math.max(obj.width || 0, 200);
       }
 
+      // Strip layout hint fields that are not Fabric.js properties
+      delete obj.zone;
+      delete obj.alignWith;
+
       return obj;
     });
 
@@ -639,6 +652,8 @@ export class CanvasWrapperService {
     if (snap.width) this.projectWidth = snap.width;
     if (snap.height) this.projectHeight = snap.height;
     canvas.renderAll();
+    // Re-fit viewport after restoring
+    this.fitToScreen();
   }
 
   // --- Zoom ---
@@ -646,21 +661,30 @@ export class CanvasWrapperService {
   zoomIn(): void {
     const canvas = this.c();
     const current = canvas.getZoom();
-    canvas.setZoom(current * 1.1);
+    const newZoom = Math.min(current * 1.1, 5);
+    const center = canvas.getVpCenter();
+    canvas.zoomToPoint(center, newZoom);
     canvas.renderAll();
+    this.onZoomChanged$.next(canvas.getZoom());
   }
 
   zoomOut(): void {
     const canvas = this.c();
     const current = canvas.getZoom();
-    canvas.setZoom(current / 1.1);
+    const newZoom = Math.max(current / 1.1, 0.1);
+    const center = canvas.getVpCenter();
+    canvas.zoomToPoint(center, newZoom);
     canvas.renderAll();
+    this.onZoomChanged$.next(canvas.getZoom());
   }
 
   setZoom(level: number): void {
     const canvas = this.c();
-    canvas.setZoom(level);
+    const clampedZoom = Math.max(0.1, Math.min(level, 5));
+    const center = canvas.getVpCenter();
+    canvas.zoomToPoint(center, clampedZoom);
     canvas.renderAll();
+    this.onZoomChanged$.next(canvas.getZoom());
   }
 
   getZoom(): number {
@@ -669,31 +693,42 @@ export class CanvasWrapperService {
 
   fitToScreen(containerWidth?: number, containerHeight?: number): void {
     const canvas = this.c();
-    if (!containerWidth || !containerHeight) {
+
+    // Use cached dimensions if not provided
+    const cw = containerWidth || this.lastContainerWidth;
+    const ch = containerHeight || this.lastContainerHeight;
+
+    if (!cw || !ch) {
       canvas.setZoom(1);
       canvas.renderAll();
+      this.onZoomChanged$.next(canvas.getZoom());
       return;
     }
+
+    // Cache for future calls without arguments
+    this.lastContainerWidth = cw;
+    this.lastContainerHeight = ch;
 
     // Project (logical) canvas dimensions — e.g. 1080x1080
     const projectWidth = this.projectWidth;
     const projectHeight = this.projectHeight;
 
     const padding = 40;
-    const availWidth = containerWidth - padding * 2;
-    const availHeight = containerHeight - padding * 2;
+    const availWidth = cw - padding * 2;
+    const availHeight = ch - padding * 2;
 
     const scale = Math.min(availWidth / projectWidth, availHeight / projectHeight, 1);
 
     // Resize the canvas DOM element to fit the container so it doesn't overflow
-    canvas.setDimensions({ width: containerWidth, height: containerHeight });
+    canvas.setDimensions({ width: cw, height: ch });
     canvas.setZoom(scale);
 
     // Center the project content within the viewport
     const vpt = canvas.viewportTransform!;
-    vpt[4] = (containerWidth - projectWidth * scale) / 2;
-    vpt[5] = (containerHeight - projectHeight * scale) / 2;
+    vpt[4] = (cw - projectWidth * scale) / 2;
+    vpt[5] = (ch - projectHeight * scale) / 2;
     canvas.renderAll();
+    this.onZoomChanged$.next(canvas.getZoom());
   }
 
   // --- Bulk operations for keyboard shortcuts ---
@@ -781,7 +816,8 @@ export class CanvasWrapperService {
     this.projectWidth = width;
     this.projectHeight = height;
     canvas.setDimensions({ width, height });
-    canvas.renderAll();
+    // Re-fit viewport after dimension change
+    this.fitToScreen();
   }
 
   getCanvasWidth(): number {

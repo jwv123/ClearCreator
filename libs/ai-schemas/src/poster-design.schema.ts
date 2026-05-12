@@ -26,6 +26,9 @@ export const CanvasElementSchema = z.object({
   // Image-specific
   src: z.string().optional(),
   uploadId: z.string().optional(),
+  // Layout hints (guide AI reasoning, stripped before rendering)
+  zone: z.enum(['header', 'body', 'footer', 'accent']).optional(),
+  alignWith: z.enum(['left', 'center', 'right']).optional(),
 });
 
 export const DesignGenerationSchema = z.object({

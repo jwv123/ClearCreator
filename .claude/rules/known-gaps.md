@@ -8,4 +8,4 @@
 - **Backend tsc build fails** — `rootDir` issue with path aliases to `libs/` outside `apps/api/src`. Works at runtime via `tsx` but `tsc` build produces errors. Needs composite project references or build tooling update.
 - **Modify flow has no streaming** — `/api/ai/modify` is non-streaming. For complex modifications, a streaming variant would improve UX.
 - **Mobile editor is limited** — sidebars collapse on mobile but the canvas editing experience is still desktop-first. Touch interactions and pinch-to-zoom are not implemented.
-- **AI element positioning varies by model** — System prompts enforce safe zones and anti-overlap rules, and `toFabricJSON()` clamps positions to the 60px safe zone, but element alignment quality still depends on the AI model's capability.
+- **AI element positioning varies by model** — System prompts enforce safe zones and anti-overlap rules (multi-stage CoT with zones), `toFabricJSON()` clamps positions to the 60px safe zone, and `LayoutPostProcessor` uses @lume/kiwi Cassowary solver to resolve overlaps and snap alignment, but element alignment quality still depends on the AI model's capability.

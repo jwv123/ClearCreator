@@ -80,3 +80,15 @@
 - [x] Fix canvas overflow into sidebar — `fitToScreen()` resizes canvas element to container, `projectWidth`/`projectHeight` for logical dimensions, `withProjectDimensions()` for serialization
 - [x] Add AI element position clamping — `toFabricJSON()` clamps elements to 60px safe zone, enforces minimum text width of 200px
 - [x] Strengthen system prompts — enforce left/top >= 60px safe zone, anti-overlap spacing (30-60px gaps), minimum text width, height estimation formula
+
+## Phase 12: Canvas Centering, Zoom & AI Layout Improvements ✅
+- [x] Fix topbar "Fit" button — cache container dimensions in `fitToScreen()`, use cached values when called without arguments
+- [x] Fix zoom methods to preserve centering — use `canvas.zoomToPoint(center, zoom)` instead of `canvas.setZoom()`, cap zoom at 0.1–5x
+- [x] Fix stale viewport after `loadFromJSON()`, `restoreSnapshot()`, and `setDimensions()` — call `fitToScreen()` after each
+- [x] Add `onZoomChanged$` Subject to `CanvasWrapperService` — emit zoom changes from all zoom/fit methods, subscribe in `EditorComponent` for signal sync
+- [x] Install `@lume/kiwi` Cassowary constraint solver for layout post-processing
+- [x] Create `LayoutPostProcessor` — constraint-based overlap removal, safe margin enforcement, alignment snapping (required, strong, medium, weak constraint priorities)
+- [x] Integrate `LayoutPostProcessor` into `AiState.applyDesignToCanvas()` — runs after `loadFromJSON()` to resolve overlaps and snap alignment
+- [x] Restructure AI system prompts with multi-stage Chain-of-Thought (zones, positioning, verify)
+- [x] Add `zone` and `alignWith` optional hint fields to `CanvasElementSchema` (Zod)
+- [x] Strip `zone`/`alignWith` hint fields in `toFabricJSON()` before passing to Fabric.js

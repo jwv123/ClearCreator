@@ -21,13 +21,33 @@
 - SidebarComponent's "Image" button switches the right panel to the Assets tab instead of opening a file dialog
 - FontSelectorComponent is used inside PropertiesPanelComponent for font family selection — it provides a searchable dropdown with System Fonts and Google Fonts groups, font preview rendering, and automatic font loading
 
-## AI State Management
+## Canvas Viewport and Zoom
+
+- `CanvasWrapperService.fitToScreen()` caches container dimensions (`lastContainerWidth`/`lastContainerHeight`) and uses them when called without arguments — this fixes the topbar Fit button
+- Zoom methods (`zoomIn`, `zoomOut`, `setZoom`) use `canvas.zoomToPoint(center, zoom)` to preserve centering — `canvas.setZoom()` alone breaks the viewport transform
+- `fitToScreen()` is called after `loadFromJSON()`, `restoreSnapshot()`, and `setDimensions()` to re-fit the viewport
+- `onZoomChanged$` Subject emits zoom level changes from all zoom/fit methods — EditorComponent subscribes to keep `zoomLevel` signal in sync
+
+## Layout Post-Processing
+
+- `LayoutPostProcessor` (`features/editor/canvas/layout-post-processor.ts`) uses the Cassowary constraint solver (@lume/kiwi) to resolve overlapping elements after AI generation
+- Constraints are prioritized: Required (safe margins, bounds), Strong (non-overlap), Medium (stay near AI position), Weak (grid alignment, edge alignment)
+- Background elements (low opacity, full-canvas rects, >50% area coverage) are locked in place and not repositioned
+- `AiState.applyDesignToCanvas()` runs post-processing after `loadFromJSON()` and applies adjustments via `canvasWrapper.updateElement()`
+- `toFabricJSON()` strips layout hint fields (`zone`, `alignWith`) that guide AI reasoning but aren't Fabric.js properties
+
+## AI System Prompts
+
+- `DESIGN_SYSTEM_PROMPT` and `VISION_SYSTEM_PROMPT` use multi-stage Chain-of-Thought: Step 1 (zones), Step 2 (positioning with calculated heights), Step 3 (verify no overlaps)
+- The Zod schema includes optional `zone` and `alignWith` fields on `CanvasElementSchema` to encourage structured layout thinking
+- Layout hints are stripped by `toFabricJSON()` before passing to Fabric.js
 
 - `AiService` (`core/services/`) is a pure HTTP/SSE layer with no Angular signals. It returns Observables and accepts AbortSignal. Methods accept optional `imageUrl` and `visionModel` parameters for vision-based generation.
 - `AiState` (`features/editor/state/`) is the single reactive store for all AI-related UI state
 - Components read from `AiState` signals and call `AiState` methods. Never call `AiService` directly from components
 - `AiState` handles: model loading, generation orchestration, streaming text accumulation, Zod validation on apply, modify flow, error handling, cancellation via AbortController
 - `AiState` holds `imageUrl` and `visionModel` signals — when `imageUrl` is set, the backend fetches the image and sends it to the vision model alongside the prompt
+- `AiState.applyDesignToCanvas()` runs `LayoutPostProcessor.processLayout()` after `canvasWrapper.loadFromJSON()` to resolve overlaps and snap alignment via the Cassowary constraint solver (@lume/kiwi)
 - The "Apply to Canvas" flow requires explicit user action — AI designs are previewed before applying
 
 ## Fabric.js (Canvas)

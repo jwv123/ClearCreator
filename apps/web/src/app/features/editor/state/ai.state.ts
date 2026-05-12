@@ -4,6 +4,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { AiService, AiModelInfo } from '../../../core/services/ai.service';
 import { FontService } from '../../../core/services/font.service';
 import { CanvasWrapperService } from '../canvas/canvas-wrapper.service';
+import { LayoutPostProcessor } from '../canvas/layout-post-processor';
 import { CanvasState } from './canvas.state';
 import { SelectionState } from './selection.state';
 
@@ -176,6 +177,40 @@ export class AiState {
     }
 
     this.canvasWrapper.loadFromJSON(design);
+
+    // Post-process layout: resolve overlaps and snap alignment using constraint solver
+    try {
+      const canvasWidth = this.canvasWrapper.getCanvasWidth();
+      const canvasHeight = this.canvasWrapper.getCanvasHeight();
+      const objects = this.canvasWrapper.getObjects();
+
+      const layoutElements = objects.map(obj => {
+        const elWidth = (obj.width ?? 0) * (obj.scaleX ?? 1);
+        const elHeight = (obj.height ?? 0) * (obj.scaleY ?? 1);
+        // For circles, use diameter from radius
+        const effectiveWidth = obj.type === 'circle' ? ((obj as any).radius ?? 0) * 2 : elWidth;
+        const effectiveHeight = obj.type === 'circle' ? ((obj as any).radius ?? 0) * 2 : elHeight;
+        return {
+          id: (obj as any).id || '',
+          left: obj.left ?? 0,
+          top: obj.top ?? 0,
+          width: effectiveWidth,
+          height: effectiveHeight,
+          opacity: obj.opacity,
+          type: obj.type || '',
+        };
+      }).filter(el => el.id && el.width > 0 && el.height > 0);
+
+      if (layoutElements.length > 0) {
+        const adjustments = LayoutPostProcessor.processLayout(layoutElements, canvasWidth, canvasHeight);
+        for (const adj of adjustments) {
+          this.canvasWrapper.updateElement(adj.id, { left: adj.left, top: adj.top });
+        }
+      }
+    } catch (e) {
+      console.warn('Layout post-processing failed, using original positions:', e);
+    }
+
     this.generationStatus.set('idle');
     this.lastDesign.set(null);
     this.streamingText.set('');

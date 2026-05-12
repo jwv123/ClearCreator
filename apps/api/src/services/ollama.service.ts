@@ -70,10 +70,33 @@ The design must follow this exact schema:
       "lineHeight": number (optional),
       "charSpacing": number (optional),
       "src": string (for image, optional),
-      "uploadId": string (for image, optional)
+      "uploadId": string (for image, optional),
+      "zone": "header" | "body" | "footer" | "accent" (optional, for layout reasoning),
+      "alignWith": "left" | "center" | "right" (optional, for alignment reasoning)
     }
   ]
 }
+
+LAYOUT PROCESS — Think through these steps BEFORE outputting coordinates:
+
+STEP 1 - ZONES: Divide the 1080x1080 canvas into horizontal zones:
+  - Header zone: top 0-300px (hero backgrounds, large titles)
+  - Body zone: top 300-800px (subtitle, body text, details)
+  - Footer zone: top 800-1080px (calls to action, fine print, contact info)
+  Assign each element to exactly one zone. Set the "zone" field accordingly.
+
+STEP 2 - POSITIONING: Within each zone, lay out elements top-to-bottom with calculated gaps:
+  - For text, calculate height: fontSize × lineHeight × numberOfLines. Always round UP and add 30px padding.
+  - Center-aligned text: left = 540, textAlign = "center", width = 600-900
+  - Left-aligned text: left = 80-120, textAlign = "left", width = 840-920
+  - Right-aligned text: left = canvasWidth - 80 - width, textAlign = "right"
+  - Minimum 30px gap between distinct text blocks within the same zone
+  - Minimum 60px gap between zones
+
+STEP 3 - VERIFY: Before finalizing, mentally check every pair of text elements:
+  - Does any text bounding box overlap another? If yes, increase the top value of the lower element.
+  - Does every element stay within the safe zone (left >= 60, top >= 60, right <= 1020, bottom <= 1020)?
+  - Are backgrounds listed BEFORE text elements in the array?
 
 CRITICAL LAYOUT RULES — violations will produce broken designs:
 - The canvas is 1080x1080 pixels. (0,0) is the top-left corner.
@@ -85,12 +108,10 @@ CRITICAL LAYOUT RULES — violations will produce broken designs:
 - Background rectangles: use "opacity": 0.15-0.4 for subtle backgrounds behind text. They must come BEFORE text in the array.
 - NEVER place text elements behind shape elements. Text is always on top.
 - Every element MUST have explicit "left" and "top" values.
-- SAFE ZONE: ALL elements must have left >= 60 and top >= 60. Background rects covering the full canvas may start at 0,0 — everything else MUST stay within x: 60-1020 and y: 60-1020. Elements at left:0 or top:0 (except full-canvas backgrounds) WILL be clipped by the UI.
-- Text elements MUST have "width" set to control text wrapping. Minimum width: 200. Without width, text will overflow its area.
-- For centered text: set "left" to 540, "textAlign" to "center", "width" to 600-900. For left-aligned text: set "left" to 80-120, "width" to 840-920.
-- NEVER OVERLAP TEXT ELEMENTS. Calculate the vertical space each text block needs (fontSize × lineHeight × line count), then position the next text block BELOW it with at least 30px gap. Example: if a title is at top:100 with fontSize:80 and lineHeight:1.2, it occupies roughly 96px, so the next text must start at top:226 or later (100+96+30=226).
+- SAFE ZONE: ALL elements must have left >= 60 and top >= 60. Background rects covering the full canvas may start at 0,0 — everything else MUST stay within x: 60-1020 and y: 60-1020.
+- Text elements MUST have "width" set to control text wrapping. Minimum width: 200.
+- NEVER OVERLAP TEXT ELEMENTS. Calculate the vertical space each text block needs (fontSize × lineHeight × line count + 30px), then position the next text block BELOW it with at least 30px gap.
 - Vertical spacing: leave 30-60px gaps between distinct text blocks. When in doubt, add MORE space, not less.
-- For multi-line text, estimate height as: fontSize × lineHeight × number of lines. Always round up and add 30px padding.
 
 DESIGN PRINCIPLES:
 - Use harmonious color palettes (3-5 colors that complement each other)
@@ -108,13 +129,13 @@ EXAMPLE well-positioned poster (note: backgrounds FIRST, text LAST, generous spa
 {
   "canvasWidth": 1080, "canvasHeight": 1080, "backgroundColor": "#1a1a2e",
   "elements": [
-    {"type": "rect", "left": 0, "top": 0, "width": 1080, "height": 300, "fill": "#e94560", "opacity": 0.9},
-    {"type": "circle", "left": 80, "top": 350, "radius": 40, "fill": "#e94560", "opacity": 0.3},
-    {"type": "rect", "left": 80, "top": 500, "width": 920, "height": 3, "fill": "#e94560"},
-    {"type": "textbox", "left": 540, "top": 80, "width": 900, "text": "SUMMER FEST", "fontFamily": "Arial", "fontSize": 80, "fontWeight": "bold", "fill": "#ffffff", "textAlign": "center"},
-    {"type": "textbox", "left": 540, "top": 190, "width": 900, "text": "Join us for an unforgettable day", "fontFamily": "Arial", "fontSize": 28, "fill": "#ffffff", "textAlign": "center", "opacity": 0.85},
-    {"type": "textbox", "left": 540, "top": 540, "width": 840, "text": "LIVE MUSIC | FOOD | ART", "fontFamily": "Arial", "fontSize": 32, "fontWeight": "bold", "fill": "#ffffff", "textAlign": "center"},
-    {"type": "textbox", "left": 540, "top": 630, "width": 800, "text": "Saturday, July 15th\\nCentral Park, 2pm-10pm\\nFree admission for all ages", "fontFamily": "Arial", "fontSize": 22, "fill": "#cccccc", "textAlign": "center", "lineHeight": 1.6}
+    {"type": "rect", "left": 0, "top": 0, "width": 1080, "height": 300, "fill": "#e94560", "opacity": 0.9, "zone": "header"},
+    {"type": "circle", "left": 80, "top": 350, "radius": 40, "fill": "#e94560", "opacity": 0.3, "zone": "accent"},
+    {"type": "rect", "left": 80, "top": 500, "width": 920, "height": 3, "fill": "#e94560", "zone": "body"},
+    {"type": "textbox", "left": 540, "top": 80, "width": 900, "text": "SUMMER FEST", "fontFamily": "Arial", "fontSize": 80, "fontWeight": "bold", "fill": "#ffffff", "textAlign": "center", "zone": "header", "alignWith": "center"},
+    {"type": "textbox", "left": 540, "top": 220, "width": 900, "text": "Join us for an unforgettable day", "fontFamily": "Arial", "fontSize": 28, "fill": "#ffffff", "textAlign": "center", "opacity": 0.85, "zone": "header", "alignWith": "center"},
+    {"type": "textbox", "left": 540, "top": 540, "width": 840, "text": "LIVE MUSIC | FOOD | ART", "fontFamily": "Arial", "fontSize": 32, "fontWeight": "bold", "fill": "#ffffff", "textAlign": "center", "zone": "body", "alignWith": "center"},
+    {"type": "textbox", "left": 540, "top": 630, "width": 800, "text": "Saturday, July 15th\\nCentral Park, 2pm-10pm\\nFree admission for all ages", "fontFamily": "Arial", "fontSize": 22, "fill": "#cccccc", "textAlign": "center", "lineHeight": 1.6, "zone": "footer", "alignWith": "center"}
   ]
 }
 
@@ -151,10 +172,33 @@ The design must follow this exact schema:
       "lineHeight": number (optional),
       "charSpacing": number (optional),
       "src": string (for image, optional),
-      "uploadId": string (for image, optional)
+      "uploadId": string (for image, optional),
+      "zone": "header" | "body" | "footer" | "accent" (optional, for layout reasoning),
+      "alignWith": "left" | "center" | "right" (optional, for alignment reasoning)
     }
   ]
 }
+
+LAYOUT PROCESS — Think through these steps BEFORE outputting coordinates:
+
+STEP 1 - ZONES: Divide the 1080x1080 canvas into horizontal zones:
+  - Header zone: top 0-300px (hero backgrounds, large titles)
+  - Body zone: top 300-800px (subtitle, body text, details)
+  - Footer zone: top 800-1080px (calls to action, fine print, contact info)
+  Assign each element to exactly one zone. Set the "zone" field accordingly.
+
+STEP 2 - POSITIONING: Within each zone, lay out elements top-to-bottom with calculated gaps:
+  - For text, calculate height: fontSize × lineHeight × numberOfLines. Always round UP and add 30px padding.
+  - Center-aligned text: left = 540, textAlign = "center", width = 600-900
+  - Left-aligned text: left = 80-120, textAlign = "left", width = 840-920
+  - Right-aligned text: left = canvasWidth - 80 - width, textAlign = "right"
+  - Minimum 30px gap between distinct text blocks within the same zone
+  - Minimum 60px gap between zones
+
+STEP 3 - VERIFY: Before finalizing, mentally check every pair of text elements:
+  - Does any text bounding box overlap another? If yes, increase the top value of the lower element.
+  - Does every element stay within the safe zone (left >= 60, top >= 60, right <= 1020, bottom <= 1020)?
+  - Are backgrounds listed BEFORE text elements in the array?
 
 CRITICAL LAYOUT RULES — violations will produce broken designs:
 - The canvas is 1080x1080 pixels. (0,0) is the top-left corner.
@@ -166,10 +210,9 @@ CRITICAL LAYOUT RULES — violations will produce broken designs:
 - Background rectangles: use "opacity": 0.15-0.4 for subtle backgrounds behind text. They must come BEFORE text in the array.
 - NEVER place text elements behind shape elements. Text is always on top.
 - Every element MUST have explicit "left" and "top" values.
-- SAFE ZONE: ALL elements must have left >= 60 and top >= 60. Background rects covering the full canvas may start at 0,0 — everything else MUST stay within x: 60-1020 and y: 60-1020. Elements at left:0 or top:0 (except full-canvas backgrounds) WILL be clipped by the UI.
+- SAFE ZONE: ALL elements must have left >= 60 and top >= 60. Background rects covering the full canvas may start at 0,0 — everything else MUST stay within x: 60-1020 and y: 60-1020.
 - Text elements MUST have "width" set to control text wrapping. Minimum width: 200.
-- For centered text: "left" to 540, "textAlign" to "center", "width" to 600-900. For left-aligned: "left" to 80-120, "width" to 840-920.
-- NEVER OVERLAP TEXT ELEMENTS. Calculate the vertical space each text block needs (fontSize × lineHeight × line count), then position the next text block BELOW it with at least 30px gap.
+- NEVER OVERLAP TEXT ELEMENTS. Calculate the vertical space each text block needs (fontSize × lineHeight × line count + 30px), then position the next text block BELOW it with at least 30px gap.
 - Vertical spacing: leave 30-60px gaps between distinct text blocks. When in doubt, add MORE space, not less.
 
 Match the reference image's color palette, layout structure, and visual hierarchy as closely as possible. Use background rectangles for colored sections, circles for decorative elements, and textboxes for all text content.
